@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:aiq/screens/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -82,7 +81,7 @@ class MyApp extends StatelessWidget {
           foregroundColor: midnightBlue,
         ),
       ),
-      home: const SplashScreen(),
+      home: const MyHomePage(title: 'Material Theme App'),
     );
   }
 }
