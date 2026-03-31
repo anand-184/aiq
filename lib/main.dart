@@ -1,3 +1,4 @@
+import 'package:aiq/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -9,87 +10,60 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Extracted color palette
-    const royalBlue = Color(0xFF334EAC);
-    const moonWhite = Color(0xFFF7F2EB);
-    const chinaBlue = Color(0xFF7096D1);
-    const asianPear = Color(0xFFF2F0DE);
-    const midnightBlue = Color(0xFF081F5C);
-    const dawnBlue = Color(0xFFD0E3FF);
-    const jicamaWhite = Color(0xFFFFF9F0);
-    const porcelainGray = Color(0xFFEDF1F6);
-    const skyBlue = Color(0xFFBAD6EB);
+    // Explicit global colors provided by the user
+    const lightBlue = Color(0xFF95B1EE);
+    const baseWhite = Color(0xFFFFFDF5);
 
     return MaterialApp(
       title: 'Material Theme App',
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.system, // Supports switching based on device
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: moonWhite,
+        scaffoldBackgroundColor: baseWhite,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: royalBlue,
-          brightness: Brightness.light,
-          primary: royalBlue,
-          onPrimary: jicamaWhite,
-          primaryContainer: dawnBlue,
-          onPrimaryContainer: midnightBlue,
-          secondary: chinaBlue,
-          onSecondary: jicamaWhite,
-          secondaryContainer: skyBlue,
-          onSecondaryContainer: midnightBlue,
-          tertiary: asianPear,
-          onTertiary: midnightBlue,
-          surface: moonWhite,
-          onSurface: midnightBlue,
+          seedColor: lightBlue,
+          primary: baseWhite,
+          onPrimary: lightBlue,
+          primaryContainer: lightBlue,
+          onPrimaryContainer: baseWhite,
+          surface: baseWhite,
+          onSurface: lightBlue,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: dawnBlue,
-          foregroundColor: midnightBlue,
+          backgroundColor: baseWhite,
+          foregroundColor: lightBlue,
           elevation: 0,
-        ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: royalBlue,
-          foregroundColor: jicamaWhite,
         ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: midnightBlue,
+        scaffoldBackgroundColor: lightBlue,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: royalBlue,
+          seedColor: lightBlue,
           brightness: Brightness.dark,
-          primary: chinaBlue,
-          onPrimary: midnightBlue,
-          primaryContainer: royalBlue,
-          onPrimaryContainer: dawnBlue,
-          secondary: skyBlue,
-          onSecondary: midnightBlue,
-          secondaryContainer: chinaBlue,
-          onSecondaryContainer: jicamaWhite,
-          tertiary: porcelainGray,
-          onTertiary: midnightBlue,
-          surface: midnightBlue,
-          onSurface: porcelainGray,
+          primary: lightBlue,
+          onPrimary: baseWhite,
+          primaryContainer: lightBlue,
+          onPrimaryContainer: lightBlue,
+          surface: lightBlue,
+          onSurface: baseWhite,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: royalBlue,
-          foregroundColor: dawnBlue,
+          backgroundColor: baseWhite,
+          foregroundColor: lightBlue
+          ,
           elevation: 0,
         ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: chinaBlue,
-          foregroundColor: midnightBlue,
-        ),
       ),
-      home: const MyHomePage(title: 'Material Theme App'),
+      home: const LoginScreen(),
     );
   }
 }
 
 class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({super.key});
 
-  final String title;
+  final String title = 'Material Theme App';
 
   @override
   Widget build(BuildContext context) {
