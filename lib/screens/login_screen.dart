@@ -18,11 +18,9 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
           setState(() => _isLoading = false);
-          // Navigate to Dashboard when implemented
         }
       });
     }
@@ -37,163 +35,207 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Dynamic Theme extraction locks UI instantly to main.dart's active mode
-    final colorScheme = Theme.of(context).colorScheme;
-    
-    final bgColor = Theme.of(context).scaffoldBackgroundColor;
-    final textColor = colorScheme.onSurface;
-    final primaryColor = colorScheme.primary;
+    const darkBlue = Color(0xFF002140);
+    const lightGrey = Color(0xFFF1F4FF);
 
     return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Icon(Icons.auto_awesome, color: primaryColor, size: 36),
-                  const SizedBox(height: 16),
-                  Text(
-                    'AIQ',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.playfairDisplay(
-                      color: textColor,
-                      fontSize: 56,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 4.0,
+      backgroundColor: Colors.white,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                ClipPath(
+                  clipper: TopShapeClipper(),
+                  child: Container(
+                    height: 280,
+                    width: double.infinity,
+                    color: darkBlue,
+                    padding: const EdgeInsets.fromLTRB(30, 80, 30, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome Back!',
+                          style: GoogleFonts.montserrat(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Sign In',
+                          style: GoogleFonts.montserrat(
+                            color: Colors.white,
+                            fontSize: 42,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'AUTHENTICATION REQUIRED',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.montserrat(
-                      color: textColor.withOpacity(0.6),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 6.0,
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(30.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Email Address',
+                      style: GoogleFonts.montserrat(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: darkBlue,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 64),
-
-                  // --- Email Field ---
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    style: TextStyle(color: textColor),
-                    decoration: _buildInputDecoration('Corporate Email',
-                        Icons.email_outlined, textColor, primaryColor),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Email is required';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // --- Password Field ---
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    style: TextStyle(color: textColor),
-                    decoration: _buildInputDecoration('Password', Icons.lock_outline, textColor, primaryColor),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Password is required';
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 12),
-                  // Forgot Password?
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {},
-                      style: TextButton.styleFrom(
-                        foregroundColor: primaryColor,
-                        textStyle: GoogleFonts.montserrat(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1.0,
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: _buildInputDecoration('Enter Email Address', lightGrey),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Password',
+                      style: GoogleFonts.montserrat(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: darkBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: _buildInputDecoration('Enter Your Password', lightGrey),
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'Forget Password?',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: darkBlue,
                         ),
                       ),
-                      child: const Text('FORGOT PASSWORD?'),
                     ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: colorScheme.onPrimary,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    const SizedBox(height: 40),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: darkBlue,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 0,
                         ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Text(
+                                'Sign In',
+                                style: GoogleFonts.montserrat(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
-                      child: _isLoading
-                          ? SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
-                              ),
-                            )
-                          : Text(
-                              'SIGN IN',
-                              style: GoogleFonts.montserrat(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 3.0,
-                              ),
+                    ),
+                    const SizedBox(height: 40),
+                    Center(
+                      child: RichText(
+                        text: TextSpan(
+                          text: "Don't Have An Account? ",
+                          style: GoogleFonts.montserrat(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+                          children: [
+                            TextSpan(
+                              text: 'Sign Up',
+                              style: GoogleFonts.montserrat(color: darkBlue, fontWeight: FontWeight.bold),
                             ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  // Refactored helper specifically consuming dynamically themed colors
-  InputDecoration _buildInputDecoration(String label, IconData icon, Color textColor, Color primaryColor) {
-    var border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(4),
-      borderSide: BorderSide(color: textColor.withOpacity(0.2)),
-    );
-    
+  InputDecoration _buildInputDecoration(String hint, Color fillColor) {
     return InputDecoration(
-      labelText: label,
-      labelStyle: GoogleFonts.montserrat(
-        color: textColor.withOpacity(0.5),
-        fontSize: 12,
-        letterSpacing: 1.0,
-      ),
-      prefixIcon: Icon(icon, color: textColor.withOpacity(0.5), size: 18),
-      enabledBorder: border,
-      focusedBorder: border.copyWith(
-        borderSide: BorderSide(color: primaryColor, width: 2),
-      ),
-      errorBorder: border.copyWith(
-        borderSide: BorderSide(color: Colors.red.shade300),
-      ),
-      focusedErrorBorder: border.copyWith(
-        borderSide: BorderSide(color: Colors.red.shade300, width: 2),
-      ),
+      hintText: hint,
+      hintStyle: GoogleFonts.montserrat(color: Colors.grey.withOpacity(0.5), fontSize: 13),
       filled: true,
-      fillColor: textColor.withOpacity(0.04), // Just enough contrast
+      fillColor: fillColor,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide.none,
+      ),
     );
   }
+
+  Widget _socialButton(String label, String logoUrl) {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F4FF),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.network(logoUrl, height: 20),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: GoogleFonts.montserrat(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: const Color(0xFF002140),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TopShapeClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    var path = Path();
+    path.lineTo(0, size.height - 80);
+    
+    var firstControlPoint = Offset(size.width / 2, size.height);
+    var firstEndPoint = Offset(size.width, size.height - 80);
+    
+    path.quadraticBezierTo(
+      firstControlPoint.dx,
+      firstControlPoint.dy,
+      firstEndPoint.dx,
+      firstEndPoint.dy,
+    );
+    
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
