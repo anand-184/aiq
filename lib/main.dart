@@ -16,7 +16,8 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'Material Theme App',
-      themeMode: ThemeMode.system, // Supports switching based on device
+      themeMode: ThemeMode.system,
+      debugShowCheckedModeBanner: false,// Supports switching based on device
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: baseWhite,

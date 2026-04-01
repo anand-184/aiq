@@ -96,7 +96,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
-                      decoration: _buildInputDecoration('Enter Email Address', lightGrey),
+                      style:TextStyle(color: darkBlue),
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: _buildInputDecoration('Enter Email Address',lightGrey),
                     ),
                     const SizedBox(height: 20),
                     Text(
@@ -111,7 +113,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
-                      decoration: _buildInputDecoration('Enter Your Password', lightGrey),
+                      style: TextStyle(color: darkBlue),
+                      keyboardType: TextInputType.visiblePassword,
+                      decoration: _buildInputDecoration(
+                          'Enter Your Password',lightGrey)
                     ),
                     const SizedBox(height: 12),
                     Align(
@@ -175,10 +180,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  InputDecoration _buildInputDecoration(String hint, Color fillColor) {
+  InputDecoration _buildInputDecoration(String hint, Color fillColor, Icon? fieldIcon) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.montserrat(color: Colors.grey.withOpacity(0.5), fontSize: 13),
+      icon: fieldIcon,
+      hintStyle: GoogleFonts.montserrat(color:Color(0xFF002140), fontSize: 13,fontWeight:FontWeight(5)),
       filled: true,
       fillColor: fillColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -219,14 +225,14 @@ class TopShapeClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     var path = Path();
-    path.lineTo(0, size.height - 80);
+    path.lineTo(0,size.height-0);
     
     var firstControlPoint = Offset(size.width / 2, size.height);
-    var firstEndPoint = Offset(size.width, size.height - 80);
+    var firstEndPoint = Offset(size.width-80,size.height - 0 );
     
     path.quadraticBezierTo(
       firstControlPoint.dx,
-      firstControlPoint.dy,
+      firstControlPoint.dx,
       firstEndPoint.dx,
       firstEndPoint.dy,
     );
