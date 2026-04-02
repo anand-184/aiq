@@ -15,6 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final skillController = TextEditingController();
+  late String role ;
 
   static const darkBlue = Color(0xFF002140);
 
@@ -44,15 +45,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
+      body: Column(
           children: [
             ClipPath(
               clipper: TopShapeClipper(),
               child: Container(
                 height: 250,
                 width: double.infinity,
-                color: darkBlue,
                 padding: const EdgeInsets.fromLTRB(30, 80, 30, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,9 +77,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
+              padding: const EdgeInsets.all(10),
+              child: SingleChildScrollView(child :Form(key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -136,12 +134,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             elevation: 5,
                             foregroundColor: Colors.white,
                           )),
+                          SizedBox(width: 10,),
                           ElevatedButton(onPressed: (){}, child: Text("Manager"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey,
-                            elevation: 5,
-                            foregroundColor: Colors.white,
-                          )),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey,
+                                elevation: 5,
+                                foregroundColor: Colors.white,
+                              )),
+                          SizedBox(width: 10,),
                           ElevatedButton(onPressed: (){}, child: Text("Admin"),style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.grey,
                             elevation: 5,
@@ -152,6 +152,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     )
                     ,
+                    SizedBox(height: 30,),
                     TextFormField(
                       controller: skillController ,
                       keyboardType: TextInputType.name,
@@ -182,11 +183,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
               ),
+    )
+
             )
           ],
         ),
-      ),
-    );
+      );
   }
 }
 InputDecoration _buildInputDecoration(String hint, Color fillColor, Icon icon) {

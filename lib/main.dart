@@ -48,8 +48,8 @@ class MyApp extends StatelessWidget {
           onPrimary: darkBlue,
           primaryContainer: baseWhite,
           onPrimaryContainer: darkBlue,
-          surface: baseWhite,
-          onSurface: darkBlue,
+          surface: darkBlue,
+          onSurface: baseWhite,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: baseWhite,

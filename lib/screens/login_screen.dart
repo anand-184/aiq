@@ -50,7 +50,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Container(
                     height: 250,
                     width: double.infinity,
-                    color: darkBlue,
                     padding: const EdgeInsets.fromLTRB(30, 80, 30, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
