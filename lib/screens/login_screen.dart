@@ -180,10 +180,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  InputDecoration _buildInputDecoration(String hint, Color fillColor, Icon? fieldIcon) {
+  InputDecoration _buildInputDecoration(String hint, Color fillColor, ) {
     return InputDecoration(
       hintText: hint,
-      icon: fieldIcon,
       hintStyle: GoogleFonts.montserrat(color:Color(0xFF002140), fontSize: 13,fontWeight:FontWeight(5)),
       filled: true,
       fillColor: fillColor,
@@ -225,19 +224,15 @@ class TopShapeClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     var path = Path();
-    path.lineTo(0,size.height-0);
-    
-    var firstControlPoint = Offset(size.width / 2, size.height);
-    var firstEndPoint = Offset(size.width-80,size.height - 0 );
-    
+    path.lineTo(0,size.height);
+    path.lineTo((size.width/2)+40, size.height);
+
     path.quadraticBezierTo(
-      firstControlPoint.dx,
-      firstControlPoint.dx,
-      firstEndPoint.dx,
-      firstEndPoint.dy,
-    );
-    
+        size.width/2+170, size.height,
+        size.width+150, size.height-550);
+
     path.lineTo(size.width, 0);
+
     path.close();
     return path;
   }
