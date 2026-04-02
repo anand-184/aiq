@@ -1,4 +1,5 @@
 import 'package:aiq/screens/login_screen.dart';
+import 'package:aiq/screens/register_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -13,6 +14,7 @@ class MyApp extends StatelessWidget {
     // Explicit global colors provided by the user
     const lightBlue = Color(0xFF95B1EE);
     const baseWhite = Color(0xFFFFFDF5);
+    const darkBlue = Color(0xFF002140);
 
     return MaterialApp(
       title: 'Material Theme App',
@@ -22,32 +24,32 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: baseWhite,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: lightBlue,
+          seedColor: darkBlue,
           primary: baseWhite,
-          onPrimary: lightBlue,
-          primaryContainer: lightBlue,
+          onPrimary: darkBlue,
+          primaryContainer: darkBlue,
           onPrimaryContainer: baseWhite,
           surface: baseWhite,
-          onSurface: lightBlue,
+          onSurface: darkBlue,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: baseWhite,
-          foregroundColor: lightBlue,
+          foregroundColor: darkBlue,
           elevation: 0,
         ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: lightBlue,
+        scaffoldBackgroundColor:darkBlue,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: lightBlue,
+          seedColor: baseWhite,
           brightness: Brightness.dark,
-          primary: lightBlue,
-          onPrimary: baseWhite,
-          primaryContainer: lightBlue,
-          onPrimaryContainer: lightBlue,
-          surface: lightBlue,
-          onSurface: baseWhite,
+          primary: baseWhite,
+          onPrimary: darkBlue,
+          primaryContainer: baseWhite,
+          onPrimaryContainer: darkBlue,
+          surface: baseWhite,
+          onSurface: darkBlue,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: baseWhite,
@@ -56,7 +58,7 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const LoginScreen(),
+      home: const RegisterScreen(),
     );
   }
 }

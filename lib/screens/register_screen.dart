@@ -13,6 +13,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final skillController = TextEditingController();
 
   static const darkBlue = Color(0xFF002140);
 
@@ -82,14 +84,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+
+                    // name
                     TextFormField(
                       controller: _nameController,
                       keyboardType: TextInputType.name,
                       style: const TextStyle(color: darkBlue),
-                      decoration: const InputDecoration(
-                        hintText: 'Name',
-                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
-                      ),
+                      decoration: _buildInputDecoration('Enter Your Name', Colors.white,
+                          const Icon(Icons.person, color: darkBlue)),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your name';
@@ -98,14 +100,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     const SizedBox(height: 10),
+                    //email
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: darkBlue),
-                      decoration: const InputDecoration(
-                        hintText: 'Email Address',
-                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
-                      ),
+                      decoration: _buildInputDecoration('Enter Email Address',
+                          Colors.white,const Icon(Icons.email, color: darkBlue)),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your email address';
@@ -114,6 +115,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     const SizedBox(height: 30),
+                    TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      style: const TextStyle(color: darkBlue),
+                      decoration: _buildInputDecoration('Enter Phone Number',
+                          Colors.white,const Icon(Icons.phone, color: darkBlue)),
+                    ),
+                    const SizedBox(height: 30),
+                    Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Row(
+                        children: [
+                          ElevatedButton(onPressed: (){}, child: Text("Employee"),style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey,
+                            elevation: 5,
+                            foregroundColor: Colors.white,
+                          )),
+                          ElevatedButton(onPressed: (){}, child: Text("Manager"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey,
+                            elevation: 5,
+                            foregroundColor: Colors.white,
+                          )),
+                          ElevatedButton(onPressed: (){}, child: Text("Admin"),style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey,
+                            elevation: 5,
+                            foregroundColor: Colors.white,
+                          ),),
+                        ],
+                      ),
+
+                    )
+                    ,
+                    TextFormField(
+                      controller: skillController ,
+                      keyboardType: TextInputType.name,
+                      style: const TextStyle(color: darkBlue),
+                      decoration: _buildInputDecoration('Enter Skills (*Separated by Commas)',
+                          Colors.white,const Icon(Icons.person, color: darkBlue)),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your skills';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    //password
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -135,6 +188,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+}
+InputDecoration _buildInputDecoration(String hint, Color fillColor, Icon icon) {
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
+    filled: true,
+    icon: icon,
+    fillColor: fillColor,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(15),
+      borderSide: BorderSide.none,
+    ),
+  );
 }
 class TopShapeClipper extends CustomClipper<Path> {
   @override
