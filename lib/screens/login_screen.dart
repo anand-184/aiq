@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ClipPath(
                   clipper: TopShapeClipper(),
                   child: Container(
-                    height: 280,
+                    height: 250,
                     width: double.infinity,
                     color: darkBlue,
                     padding: const EdgeInsets.fromLTRB(30, 80, 30, 0),
@@ -98,7 +98,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _emailController,
                       style:TextStyle(color: darkBlue),
                       keyboardType: TextInputType.emailAddress,
-                      decoration: _buildInputDecoration('Enter Email Address',lightGrey),
+                      decoration: _buildInputDecoration('Enter Email Address',
+                        lightGrey, const Icon(Icons.email, color: Color(0xFF002140))
+                      )
                     ),
                     const SizedBox(height: 20),
                     Text(
@@ -116,7 +118,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: darkBlue),
                       keyboardType: TextInputType.visiblePassword,
                       decoration: _buildInputDecoration(
-                          'Enter Your Password',lightGrey)
+                          'Enter Your Password',lightGrey,
+                          const Icon(Icons.lock, color: Color(0xFF002140)
+                    ))
                     ),
                     const SizedBox(height: 12),
                     Align(
@@ -180,11 +184,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  InputDecoration _buildInputDecoration(String hint, Color fillColor, ) {
+  InputDecoration _buildInputDecoration(String hint, Color fillColor, Icon icon) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.montserrat(color:Color(0xFF002140), fontSize: 13,fontWeight:FontWeight(5)),
+      hintStyle: GoogleFonts.montserrat(color:Color(0xFF002140), fontSize: 13, fontWeight: FontWeight.w500),
       filled: true,
+      icon: icon,
       fillColor: fillColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       border: OutlineInputBorder(
