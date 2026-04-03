@@ -48,9 +48,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Column(
-        children: [
-          ClipPath(
+      resizeToAvoidBottomInset: true,
+      body: CustomScrollView(
+        slivers: [
+          // 1. FIXED HEADER
+          SliverToBoxAdapter(
+            child: ClipPath(
             clipper: TopShapeClipper(),
             child: Container(
               height: 230,
@@ -80,72 +83,82 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: SingleChildScrollView(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextFormField(
-                        controller: _nameController,
-                        keyboardType: TextInputType.name,
-                        style: TextStyle(color: colorScheme.onSurface),
-                        decoration: const InputDecoration(
-                            hintText: 'Enter Your Name',
-                            icon: Icon(Icons.person)),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        style: TextStyle(color: colorScheme.onSurface),
-                        decoration: const InputDecoration(
-                            hintText: 'Enter Email Address',
-                            icon: Icon(Icons.email)),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email address';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 30),
-                      TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        style: TextStyle(color: colorScheme.onSurface),
-                        decoration: const InputDecoration(
-                            hintText: 'Enter Phone Number',
-                            icon: Icon(Icons.phone)),
-                      ),
-                      const SizedBox(height: 30),
-                      Container(
+          const SliverToBoxAdapter(child: SizedBox(height: 10)),
+
+          // 2. SCROLLABLE FORM SECTION
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            sliver: SliverToBoxAdapter(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: _nameController,
+                      keyboardType: TextInputType.name,
+                      style: TextStyle(color: colorScheme.onSurface),
+                      decoration: const InputDecoration(
+                          hintText: 'Enter Your Name',
+                          icon: Icon(Icons.person)),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      style: TextStyle(color: colorScheme.onSurface),
+                      decoration: const InputDecoration(
+                          hintText: 'Enter Email Address',
+                          icon: Icon(Icons.email)),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email address';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 30),
+                    TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      style: TextStyle(color: colorScheme.onSurface),
+                      decoration: const InputDecoration(
+                          hintText: 'Enter Phone Number',
+                          icon: Icon(Icons.phone)),
+                    ),
+                    const SizedBox(height: 30),
+                    Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: colorScheme.onSurface.withOpacity(0.1)),
+                          border: Border.all(
+                              color: colorScheme.onSurface.withOpacity(0.1)),
                           borderRadius: BorderRadius.circular(10),
                           color: colorScheme.onSurface.withOpacity(0.1),
                         ),
                         child: Column(
                           children: [
-                            Text("Select Role", style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.bold)),
+                            Text("Select Role",
+                                style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold)),
                             const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            Wrap(
+                              alignment: WrapAlignment.spaceEvenly,
+                              spacing: 8.0,
+                              runSpacing: 8.0,
                               children: [
                                 ElevatedButton(
                                   onPressed: () {},
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: colorScheme.onSurface.withOpacity(0.1),
+                                    backgroundColor:
+                                    colorScheme.onSurface.withOpacity(0.1),
                                     elevation: 0,
                                     foregroundColor: colorScheme.onSurface,
                                   ),
@@ -154,7 +167,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ElevatedButton(
                                   onPressed: () {},
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: colorScheme.onSurface.withOpacity(0.1),
+                                    backgroundColor:
+                                    colorScheme.onSurface.withOpacity(0.1),
                                     elevation: 0,
                                     foregroundColor: colorScheme.onSurface,
                                   ),
@@ -163,7 +177,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ElevatedButton(
                                   onPressed: () {},
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: colorScheme.onSurface.withOpacity(0.1),
+                                    backgroundColor:
+                                    colorScheme.onSurface.withOpacity(0.1),
                                     elevation: 0,
                                     foregroundColor: colorScheme.onSurface,
                                   ),
@@ -172,62 +187,81 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ],
                             ),
                           ],
-                        )
-                      ),
-                      const SizedBox(height: 30),
-                      TextFormField(
-                        controller: skillController,
-                        keyboardType: TextInputType.name,
-                        style: TextStyle(color: colorScheme.onSurface),
-                        decoration: const InputDecoration(
-                            hintText: 'Enter Skills (*Separated by Commas)',
-                            icon: Icon(Icons.person)),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your skills';
-                          }
-                          return null;
-                        },
-                      ),
-                      
-                      const SizedBox(height: 30),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _handleRegister,
-                          child: const Text('Sign Up'),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (context) => const LoginScreen()),
-                            );
-                          },
-                          child: RichText(
-                            text: TextSpan(
-                              text: "Already Have An Account? ",
-                              style: TextStyle(color: colorScheme.onSurface.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold),
-                              children: [
-                                TextSpan(
-                                  text: 'Sign In',
-                                  style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                        )),
+                    const SizedBox(height: 30),
+                    TextFormField(
+                      controller: skillController,
+                      keyboardType: TextInputType.name,
+                      style: TextStyle(color: colorScheme.onSurface),
+                      decoration: const InputDecoration(
+                          hintText: 'Enter Skills (*Separated by Commas)',
+                          icon: Icon(Icons.person)),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your skills';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 30),
+                  ],
                 ),
               ),
             ),
-          )
+          ),
+
+          // 3. FIXED FOOTER (Button and Sign In link)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 50, left: 20, right: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _handleRegister,
+                    child: const Text('Sign Up'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const LoginScreen()),
+                      );
+                    },
+                    child: RichText(
+                      text: TextSpan(
+                        text: "Already Have An Account? ",
+                        style: TextStyle(
+                            color: colorScheme.onSurface.withOpacity(0.5),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold),
+                        children: [
+                          TextSpan(
+                            text: 'Sign In',
+                            style: TextStyle(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+            ),
+          ),
         ],
       ),
     );
@@ -241,9 +275,8 @@ class TopShapeClipper extends CustomClipper<Path> {
     path.lineTo(0, size.height);
     path.lineTo((size.width / 2) + 40, size.height);
 
-    path.quadraticBezierTo(
-        size.width / 2 + 170, size.height,
-        size.width + 150, size.height - 550);
+    path.quadraticBezierTo(size.width / 2 + 170, size.height, size.width + 150,
+        size.height - 550);
 
     path.lineTo(size.width, 0);
 
