@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "634122879163",
+    "project_id": "aiq-a9d98",
+    "storage_bucket": "aiq-a9d98.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:634122879163:android:693d23b591a27190a1299e",
+        "android_client_info": {
+          "package_name": "com.example.aiq"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbZ8qqEjclW9lednDzwbuCbt4uqRAFpAo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

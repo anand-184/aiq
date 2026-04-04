@@ -14,8 +14,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
   final skillController = TextEditingController();
-  late String role;
+  String role = "Employee";
+  bool _isOtpVisible = false;
 
   Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
@@ -37,6 +39,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _nameController.dispose();
     _phoneController.dispose();
+    _otpController.dispose();
     skillController.dispose();
     super.dispose();
   }
@@ -54,32 +57,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // 1. FIXED HEADER
           SliverToBoxAdapter(
             child: ClipPath(
-            clipper: TopShapeClipper(),
-            child: Container(
-              height: 230,
-              width: double.infinity,
-              color: colorScheme.primary,
-              padding: const EdgeInsets.fromLTRB(30, 80, 30, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome!',
-                    style: TextStyle(
-                      color: colorScheme.onPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+              clipper: TopShapeClipper(),
+              child: Container(
+                height: 230,
+                width: double.infinity,
+                color: colorScheme.primary,
+                padding: const EdgeInsets.fromLTRB(30, 80, 30, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome!',
+                      style: TextStyle(
+                        color: colorScheme.onPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  Text(
-                    "Sign Up ",
-                    style: TextStyle(
-                      color: colorScheme.onPrimary,
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                ],
+                    Text(
+                      "Sign Up ",
+                      style: TextStyle(
+                        color: colorScheme.onPrimary,
+                        fontSize: 42,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  ],
+                ),
               ),
             ),
           ),
@@ -109,21 +113,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      style: TextStyle(color: colorScheme.onSurface),
-                      decoration: const InputDecoration(
-                          hintText: 'Enter Email Address',
-                          icon: Icon(Icons.email)),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email address';
-                        }
-                        return null;
-                      },
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            style: TextStyle(color: colorScheme.onSurface),
+                            decoration: const InputDecoration(
+                                hintText: 'Enter Email Address',
+                                icon: Icon(Icons.email)),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your email address';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _isOtpVisible = true;
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          child: const Text("Verify"),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 30),
+                    if (_isOtpVisible) ...[
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _otpController,
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(color: colorScheme.onSurface),
+                        decoration: const InputDecoration(
+                            hintText: 'Enter OTP Code',
+                            icon: Icon(Icons.security)),
+                        validator: (value) {
+                          if (_isOtpVisible && (value == null || value.isEmpty)) {
+                            return 'Please enter OTP';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 10),
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
@@ -137,9 +178,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           border: Border.all(
-                              color: colorScheme.onSurface.withOpacity(0.1)),
+                              color: colorScheme.onSurface.withValues(alpha: 0.1)),
                           borderRadius: BorderRadius.circular(10),
-                          color: colorScheme.onSurface.withOpacity(0.1),
+                          color: colorScheme.onSurface.withValues(alpha: 0.1),
                         ),
                         child: Column(
                           children: [
@@ -155,32 +196,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               runSpacing: 8.0,
                               children: [
                                 ElevatedButton(
-                                  onPressed: () {},
+                                  onPressed: () {
+                                    setState(() {
+                                      role = "Employee";
+                                    });
+                                  },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                    colorScheme.onSurface.withOpacity(0.1),
+                                    backgroundColor: role == "Employee"
+                                        ? colorScheme.primary
+                                        : colorScheme.onSurface.withValues(alpha: 0.1),
                                     elevation: 0,
-                                    foregroundColor: colorScheme.onSurface,
+                                    foregroundColor: role == "Employee"
+                                        ? colorScheme.onPrimary
+                                        : colorScheme.onSurface,
                                   ),
                                   child: const Text("Employee"),
                                 ),
                                 ElevatedButton(
-                                  onPressed: () {},
+                                  onPressed: () {
+                                    setState(() {
+                                      role = "Manager";
+                                    });
+                                  },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                    colorScheme.onSurface.withOpacity(0.1),
+                                    backgroundColor: role == "Manager"
+                                        ? colorScheme.primary
+                                        : colorScheme.onSurface.withValues(alpha: 0.1),
                                     elevation: 0,
-                                    foregroundColor: colorScheme.onSurface,
+                                    foregroundColor: role == "Manager"
+                                        ? colorScheme.onPrimary
+                                        : colorScheme.onSurface,
                                   ),
                                   child: const Text("Manager"),
                                 ),
                                 ElevatedButton(
-                                  onPressed: () {},
+                                  onPressed: () {
+                                    setState(() {
+                                      role = "Admin";
+                                    });
+                                  },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                    colorScheme.onSurface.withOpacity(0.1),
+                                    backgroundColor: role == "Admin"
+                                        ? colorScheme.primary
+                                        : colorScheme.onSurface.withValues(alpha: 0.1),
                                     elevation: 0,
-                                    foregroundColor: colorScheme.onSurface,
+                                    foregroundColor: role == "Admin"
+                                        ? colorScheme.onPrimary
+                                        : colorScheme.onSurface,
                                   ),
                                   child: const Text("Admin"),
                                 ),
@@ -220,46 +282,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _handleRegister,
-                    child: const Text('Sign Up'),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const LoginScreen()),
-                      );
-                    },
-                    child: RichText(
-                      text: TextSpan(
-                        text: "Already Have An Account? ",
-                        style: TextStyle(
-                            color: colorScheme.onSurface.withOpacity(0.5),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold),
-                        children: [
-                          TextSpan(
-                            text: 'Sign In',
-                            style: TextStyle(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _handleRegister,
+                        child: const Text('Sign Up'),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    Center(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const LoginScreen()),
+                          );
+                        },
+                        child: RichText(
+                          text: TextSpan(
+                            text: "Already Have An Account? ",
+                            style: TextStyle(
+                                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
+                            children: [
+                              TextSpan(
+                                text: 'Sign In',
+                                style: TextStyle(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
             ),
           ),
         ],
