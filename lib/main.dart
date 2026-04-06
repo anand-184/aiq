@@ -1,9 +1,12 @@
+import 'package:aiq/screens/adminScreens/adminHomeScreen.dart';
 import 'package:aiq/screens/login_screen.dart';
 import 'package:aiq/screens/register_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
 
   runApp(const MyApp());
 }
@@ -116,7 +119,7 @@ class MyApp extends StatelessWidget {
         ),
         iconTheme: const IconThemeData(color: baseWhite),
       ),
-      home: const RegisterScreen(),
+      home: const Adminhomescreen(),
     );
   }
 }

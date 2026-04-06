@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _otpController = TextEditingController();
   final skillController = TextEditingController();
   String role = "Employee";
+  String? branchId;
   bool _isOtpVisible = false;
 
   Future<void> _handleRegister() async {
@@ -24,6 +26,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('username', _nameController.text);
       await prefs.setString('email', _emailController.text);
+      /* try{
+        await AuthService().registerUser(
+          email: _emailController.text.trim(),
+          password: _otpController.text.trim(),
+          companyName: "AIQ",
+          branchId: "",
+          empId: "",
+          name: _nameController.text.trim(),
+          phone: _phoneController.text,
+          role: role,
+          skills: skillController.text.split(","),
+        );
+      }
+      */
+
+
 
       if (mounted) {
         Navigator.pushReplacement(
