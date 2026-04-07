@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
@@ -12,6 +13,8 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final firestore = FirebaseFirestore.instance;
+  List<Map<String, dynamic>> branches = [];
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -21,27 +24,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? branchId;
   bool _isOtpVisible = false;
 
+  @override
+  void initState(){
+    super.initState();
+    getBranches();
+  }
+
   Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('username', _nameController.text);
       await prefs.setString('email', _emailController.text);
-      /* try{
+      try{
         await AuthService().registerUser(
           email: _emailController.text.trim(),
           password: _otpController.text.trim(),
           companyName: "AIQ",
-          branchId: "",
-          empId: "",
+          branchId: branchId.toString(),
+          empId: firestore.collection("users").doc().id,
           name: _nameController.text.trim(),
           phone: _phoneController.text,
           role: role,
           skills: skillController.text.split(","),
         );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Registration Successful"),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }catch(e){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
-      */
-
-
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -51,6 +70,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     }
   }
+
+  void getBranches() async {
+    try{
+      final querySnapshot = await firestore.collection("branches").get();
+      setState(() {
+        branches= querySnapshot.docs.map((doc){
+          final data = doc.data() as Map<String, dynamic>;
+          return {
+            "name": data["name"],
+            "branchId": doc.id,
+          };
+        }).toList();
+        });
+      }catch(e){
+        print(e);
+    }
+    }
+
 
   @override
   void dispose() {
@@ -269,6 +306,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ],
                         )),
                     const SizedBox(height: 30),
+                    DropdownButtonFormField<String>(
+                      value:branchId,
+                      decoration: const InputDecoration(
+                        labelText: 'Select Branch',
+                        icon: Icon(Icons.location_on),
+                      ),
+                      items: branches.map((branch) {
+                        return DropdownMenuItem<String>(
+                    value: branch['branchId'],
+                    child: Text(branch['name']),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          branchId = value;
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null) {
+                          return 'Please select a branch';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    SizedBox(height: 20),
                     TextFormField(
                       controller: skillController,
                       keyboardType: TextInputType.name,

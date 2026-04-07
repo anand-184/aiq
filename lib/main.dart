@@ -119,7 +119,7 @@ class MyApp extends StatelessWidget {
         ),
         iconTheme: const IconThemeData(color: baseWhite),
       ),
-      home: const Adminhomescreen(),
+      home: const RegisterScreen(),
     );
   }
 }
