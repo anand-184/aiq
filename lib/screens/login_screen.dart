@@ -1,3 +1,5 @@
+import 'package:aiq/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:aiq/screens/register_screen.dart';
@@ -13,19 +15,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final authService = AuthService();
 
   bool _isLoading = false;
 
-  void _handleLogin() {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      });
-    }
-  }
+
 
   @override
   void dispose() {
@@ -103,7 +97,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         hintText: 'Enter Email Address',
                         icon: Icon(Icons.email),
                       ),
-                    ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email address';
+                        }
+                        return null;
+    }),
                     const SizedBox(height: 20),
                     Text(
                       'Password',
@@ -123,16 +122,43 @@ class _LoginScreenState extends State<LoginScreen> {
                         hintText: 'Enter Your Password',
                         icon: Icon(Icons.lock),
                       ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 12),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: Text(
-                        'Forget Password?',
-                        style: GoogleFonts.montserrat(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
+                      child: InkWell(
+                        onTap: () {
+                          if( _emailController.text != null && _emailController.text.isNotEmpty){
+                            try{
+                              FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text.trim());
+
+                            }on FirebaseAuthException catch(e){
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.message.toString(),
+                                    style: TextStyle(color: colorScheme.onPrimary)),backgroundColor: colorScheme.primary,),
+                              );
+                            }catch(e){
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString(),
+                                    style: TextStyle(color: colorScheme.onPrimary)),backgroundColor: colorScheme.primary,),
+                              );
+                            }
+                          }
+                        },
+                        child: Text(
+                          'Forgot Password?',
+                          style: GoogleFonts.montserrat(
+                            color: colorScheme.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -141,7 +167,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleLogin,
+                        onPressed: (){
+                          if(_formKey.currentState!.validate()){
+                            setState(() {
+                              _isLoading = true;
+                            });
+                            authService.loginUser
+                              (email: _emailController.text.trim(),
+                                password: _passwordController.text.trim());
+                            if(mounted){
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                              );
+                            }
+
+                          }
+                        },
                         child: _isLoading
                             ? CircularProgressIndicator(color: colorScheme.onPrimary)
                             : Text(

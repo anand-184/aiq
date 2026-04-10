@@ -199,11 +199,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 width: double.infinity,
                 color: colorScheme.primary,
                 padding: const EdgeInsets.fromLTRB(30, 80, 30, 0),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Welcome!', style: TextStyle( fontSize: 16)),
-                    Text("Sign Up", style: TextStyle( fontSize: 42, fontWeight: FontWeight.bold)),
+                    Text('Welcome!', style: TextStyle( fontSize: 16,color:colorScheme.onPrimary, fontWeight: FontWeight.w500)),
+                  Text("Sign Up", style: TextStyle( fontSize: 42, fontWeight: FontWeight.bold,color:colorScheme.onPrimary)),
                   ],
                 ),
               ),
@@ -327,23 +327,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   child: const Text("Manager"),
                                 ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      role = "Admin";
-                                    });
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: role == "Admin"
-                                        ? colorScheme.primary
-                                        : colorScheme.onSurface.withValues(alpha: 0.1),
-                                    elevation: 0,
-                                    foregroundColor: role == "Admin"
-                                        ? colorScheme.onPrimary
-                                        : colorScheme.onSurface,
-                                  ),
-                                  child: const Text("Admin"),
-                                ),
                               ],
                             ),
                           ],
@@ -397,6 +380,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                     ),
+
+                    SizedBox(height: 30,),
 
                   ],
                 ),

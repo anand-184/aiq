@@ -49,4 +49,34 @@ class AuthService {
     }
     }
 
+  Future<String> loginUser({required String email, required String password}) async {
+    try {
+      UserCredential userCredential = await firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      User? user = userCredential.user;
+      if (user != null) {
+        return "success"; // Returning a simple keyword is often easier for the UI to check
+      } else {
+        return "Unknown error: User is null after login";
+      }
+    } on FirebaseAuthException catch (e) {
+      // Modern Firebase often returns 'invalid-credential' for both wrong email and password
+      if (e.code == "user-not-found") {
+        return "No user found for that email";
+      } else if (e.code == "wrong-password") {
+        return "Wrong password provided";
+      } else if (e.code == "invalid-credential") {
+        return "Invalid email or password";
+      } else if (e.code == "user-disabled") {
+        return "This user account has been disabled";
+      }
+      return e.message ?? "Authentication failed";
+    } catch (e) {
+      return e.toString();
+    }
   }
+    }
+
