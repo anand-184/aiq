@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 
 class AuthService {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-  final FirebaseFirestore fireStore= FirebaseFirestore.instance;
+  final FirebaseFirestore fireStore = FirebaseFirestore.instance;
 
-  Future<void> registerUser({required String email,
+  Future<void> registerUser({
+    required String email,
     required String password,
     required String companyName,
     required String branchId,
@@ -15,12 +16,13 @@ class AuthService {
     required String name,
     required String phone,
     required String role,
-    List<String> skills= const [],}) async {
-    try{
-      UserCredential userCredential = await firebaseAuth.
-      createUserWithEmailAndPassword(email: email, password: password);
+    List<String> skills = const [],
+  }) async {
+    try {
+      UserCredential userCredential = await firebaseAuth
+          .createUserWithEmailAndPassword(email: email, password: password);
       User? user = userCredential.user;
-      if(user!=null){
+      if (user != null) {
         UserModel userModel = UserModel(
             userId: user.uid,
             companyName: companyName,
@@ -29,41 +31,45 @@ class AuthService {
             name: name,
             email: email,
             role: role,
-            maxCapacityHoursPerWeek: 0, createdAt:DateTime.now(),
+            maxCapacityHoursPerWeek: 0,
+            createdAt: DateTime.now(),
             skills: skills,
-            googleCalendarTokens:{},
-            currentWorkloadPercentage:0.0
-        );
-        await fireStore.collection("users").doc(user.uid).set(userModel.toJson());
+            googleCalendarTokens: {},
+            currentWorkloadPercentage: 0.0);
+        await fireStore
+            .collection("users")
+            .doc(user.uid)
+            .set(userModel.toJson());
       }
-    }on FirebaseAuthException catch(e){
-      if(e.code == "weak-password"){
-        print("The password provided is too weak");
-      }else if(e.code == "email-already-in-use"){
-        print("The account already exists for that email");
+    } on FirebaseAuthException catch (e) {
+      if (e.code == "weak-password") {
+        debugPrint("The password provided is too weak");
+      } else if (e.code == "email-already-in-use") {
+        debugPrint("The account already exists for that email");
       }
-      throw e;
-      }catch(e){
-      print(e);
+      rethrow;
+    } catch (e) {
+      debugPrint(e.toString());
       throw Exception("Failed to register user : $e");
     }
-    }
+  }
 
-  Future<String> loginUser({required String email, required String password}) async {
+  Future<String> loginUser(
+      {required String email, required String password}) async {
     try {
-      UserCredential userCredential = await firebaseAuth.signInWithEmailAndPassword(
+      UserCredential userCredential =
+          await firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       User? user = userCredential.user;
       if (user != null) {
-        return "success"; // Returning a simple keyword is often easier for the UI to check
+        return "success";
       } else {
         return "Unknown error: User is null after login";
       }
     } on FirebaseAuthException catch (e) {
-      // Modern Firebase often returns 'invalid-credential' for both wrong email and password
       if (e.code == "user-not-found") {
         return "No user found for that email";
       } else if (e.code == "wrong-password") {
@@ -78,5 +84,4 @@ class AuthService {
       return e.toString();
     }
   }
-    }
-
+}
