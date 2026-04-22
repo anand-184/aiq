@@ -53,7 +53,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           const SizedBox(height: 10),
           _buildGlossyTile(
             context,
-            title: 'Dashboard',
+            title: '  Dashboard',
             icon: Icons.dashboard,
             onTap: () => Navigator.pop(context),
           ),
