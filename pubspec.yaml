@@ -17,6 +17,7 @@ dependencies:
   google_fonts: ^8.0.2
   shared_preferences: ^2.3.0
   firebase_auth: ^6.3.0
+  provider: ^6.1.1
   http: ^1.1.0 # Added for EmailJS (Free OTP sending)
 
 dev_dependencies:

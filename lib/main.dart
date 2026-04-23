@@ -3,14 +3,26 @@ import 'package:aiq/screens/login_screen.dart';
 import 'package:aiq/screens/register_screen.dart';
 import 'package:aiq/screens/super_admin_screens/super_admin_dashboard.dart';
 import 'package:aiq/theme/apptheme.dart';
+import 'package:aiq/viewmodels/super_admin_viewmodel.dart';
+import 'package:aiq/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SuperAdminViewModel()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
