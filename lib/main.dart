@@ -6,6 +6,7 @@ import 'package:aiq/screens/super_admin_screens/super_admin_dashboard.dart';
 import 'package:aiq/theme/apptheme.dart';
 import 'package:aiq/viewmodels/super_admin_viewmodel.dart';
 import 'package:aiq/viewmodels/admin_viewmodel.dart';
+import 'package:aiq/services/analytics_service.dart';
 import 'package:aiq/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +23,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => SuperAdminViewModel()),
         ChangeNotifierProvider(create: (_) => AdminViewModel()),
+        Provider(create: (_) => AnalyticsService()),
       ],
       child: const MyApp(),
     ),
@@ -33,7 +35,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
+    final analyticsService = Provider.of<AnalyticsService>(context, listen: false);
 
     return MaterialApp(
       title: 'Material Theme App',
@@ -41,7 +43,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      home: const CompanyAdminDashboard(),
+      navigatorObservers: [analyticsService.observer],
+      home: const SuperAdminDashboard(),
     );
   }
 }
