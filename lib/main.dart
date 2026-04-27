@@ -1,9 +1,11 @@
 import 'package:aiq/screens/adminScreens/adminHomeScreen.dart';
+import 'package:aiq/screens/adminScreens/admin_dashboard.dart';
 import 'package:aiq/screens/login_screen.dart';
 import 'package:aiq/screens/register_screen.dart';
 import 'package:aiq/screens/super_admin_screens/super_admin_dashboard.dart';
 import 'package:aiq/theme/apptheme.dart';
 import 'package:aiq/viewmodels/super_admin_viewmodel.dart';
+import 'package:aiq/viewmodels/admin_viewmodel.dart';
 import 'package:aiq/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +21,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SuperAdminViewModel()),
+        ChangeNotifierProvider(create: (_) => AdminViewModel()),
       ],
       child: const MyApp(),
     ),
@@ -38,7 +41,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      home: const SuperAdminDashboard(),
+      home: const CompanyAdminDashboard(),
     );
   }
 }

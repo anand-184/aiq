@@ -21,6 +21,18 @@ class AppTheme {
       scaffoldBackgroundColor: lightBackground,
       primaryColor: lightPrimary,
       useMaterial3: true,
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: lightSurface,
+        hourMinuteTextColor: lightPrimary,
+        hourMinuteShape: RoundedRectangleBorder(
+          borderRadius: BorderRadiusGeometry.circular(8),
+          side: BorderSide(color:  lightPrimary,width: 2),
+        ),
+        dayPeriodBorderSide: BorderSide(color: lightPrimary, width: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.circular(20)),
+        entryModeIconColor: lightPrimary
+
+      ),
       colorScheme: const ColorScheme.light(
         primary: lightPrimary,
         secondary: lightSecondary,
@@ -101,6 +113,18 @@ class AppTheme {
       scaffoldBackgroundColor: darkBackground,
       primaryColor: darkPrimary,
       useMaterial3: true,
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: darkSurface,
+        entryModeIconColor: darkSurface,
+        hourMinuteTextColor: darkTextPrimary,
+        hourMinuteShape: RoundedRectangleBorder(
+          borderRadius: BorderRadiusGeometry.circular(8),
+          side: BorderSide(color: darkSecondary,width: 2)
+        ),
+        dayPeriodBorderSide: BorderSide(color:  darkSurface),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.circular(20)),
+
+      ),
 
       colorScheme: const ColorScheme.dark(
         primary: darkPrimary,
