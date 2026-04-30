@@ -1,4 +1,7 @@
+import 'package:aiq/screens/adminScreens/admin_dashboard.dart';
+import 'package:aiq/screens/super_admin_screens/super_admin_dashboard.dart';
 import 'package:aiq/services/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -45,7 +48,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Container(
                     height: 250,
                     width: double.infinity,
-                    color: colorScheme.primary,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.primary,
+                          colorScheme.primary.withValues(alpha: 0.7),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
                     padding: const EdgeInsets.fromLTRB(30, 80, 30, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,25 +179,86 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton(
-                        onPressed: (){
-                          if(_formKey.currentState!.validate()){
+                        onPressed: () async {
+                          if (_formKey.currentState!.validate()) {
                             setState(() {
                               _isLoading = true;
                             });
-                            authService.loginUser
-                              (email: _emailController.text.trim(),
-                                password: _passwordController.text.trim());
-                            if(mounted){
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                              );
+
+                            String result = await authService.loginUser(
+                              email: _emailController.text.trim(),
+                              password: _passwordController.text.trim(),
+                            );
+
+                            if (result == "success") {
+                              final User? user =
+                                  FirebaseAuth.instance.currentUser;
+                              if (user != null) {
+                                // 1. Direct Owner Check (Bypass Firestore)
+                                // Replace with your actual Master Email
+                                if (user.email == "anandita9464@gmail.com") {
+                                  if (mounted) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const SuperAdminDashboard()),
+                                    );
+                                  }
+                                  return;
+                                }
+
+                                // 2. Regular Tenant/User Check
+                                final userDoc = await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(user.uid)
+                                    .get();
+
+                                if (userDoc.exists) {
+                                  String role = userDoc.data()?['role'] ?? "Employee";
+
+                                  if (mounted) {
+                                    if (role == "SuperAdmin") {
+                                      Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const SuperAdminDashboard()));
+                                    } else if (role == "Manager") {
+                                      // Redirect to Company Admin Panel
+                                      Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const CompanyAdminDashboard()));
+                                    } else {
+                                      // Employee Panel or Overview
+                                      Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const CompanyAdminDashboard())); // Using Admin Dashboard as placeholder for now
+                                    }
+                                  }
+                                }
+                              }
+                            } else {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(result)),
+                                );
+                              }
                             }
 
+                            if (mounted) {
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            }
                           }
                         },
                         child: _isLoading
-                            ? CircularProgressIndicator(color: colorScheme.onPrimary)
+                            ? const CircularProgressIndicator(color: Colors.white)
                             : Text(
                                 'Sign In',
                                 style: GoogleFonts.montserrat(
@@ -207,11 +280,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: RichText(
                           text: TextSpan(
                             text: "Don't Have An Account? ",
-                            style: GoogleFonts.montserrat(color: colorScheme.onSurface.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.montserrat(
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.5),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
                             children: [
                               TextSpan(
                                 text: 'Sign Up',
-                                style: GoogleFonts.montserrat(color: colorScheme.primary, fontWeight: FontWeight.bold),
+                                style: GoogleFonts.montserrat(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),

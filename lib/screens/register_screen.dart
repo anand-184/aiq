@@ -23,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
+  final _inviteCodeController = TextEditingController();
   final skillController = TextEditingController();
   final _passwordController = TextEditingController();
   
@@ -37,6 +38,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState(){
     super.initState();
     getBranches();
+    // Add listener to email controller to reset verification if changed
+    _emailController.addListener(() {
+      if (isVerified) {
+        setState(() {
+          isVerified = false;
+          _isOtpVisible = false;
+          generatedOtp = null;
+        });
+      }
+    });
   }
 
   // 1. Generate OTP
@@ -46,24 +57,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // 2. Send OTP to email
   Future<void> _sendOtpEmail() async {
-    if(_emailController.text.isEmpty || !_emailController.text.contains("@")){
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains("@")) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Invalid email address")),
       );
       return;
-      
     }
-    setState(() {
-      _isSendingOtp=true;
+
+    setState(() => _isSendingOtp = true);
+
+    try {
+      // 1. Check if email is already in use
+      final userQuery = await firestore
+          .collection("users")
+          .where("email", isEqualTo: email)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text(
+                "This email is already registered. Please sign in.")),
+          );
+        }
+        return;
+      }
+
+      // 2. Generate and Send OTP
       generatedOtp = _generateOTP();
-    });
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() {
-      _isOtpVisible = true;
-      _isSendingOtp=false;
-    });
-    
-    try{
+      
       final url = Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
       final response = await http.post(
         url,
@@ -73,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
         body: json.encode({
           'service_id': 'service_d8gp5lc',
-            'template_id': 'template_mm3cdhh',
+          'template_id': 'template_mm3cdhh',
           'user_id': 'I9yXoi7vrHCfpppNq',
           'template_params': {
             'email': _emailController.text,
@@ -81,20 +104,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
           },
         }),
       );
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("OTP sent successfully!")),
 
-      );
+      if (mounted) {
+        if (response.statusCode == 200) {
+          setState(() {
+            _isOtpVisible = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("OTP sent successfully!")),
+          );
         } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to send OTP")),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to send OTP")),
+          SnackBar(content: Text("Error: ${e.toString()}")),
         );
       }
-    }finally{
-      setState(() {
-        _isSendingOtp=false;
-      });
+    } finally {
+      if (mounted) {
+        setState(() => _isSendingOtp = false);
+      }
     }
   }
 
@@ -129,16 +163,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await prefs.setString('email', _emailController.text);
       
       try {
+        // 1. Verify Company Code
+        final companyId = _inviteCodeController.text.trim();
+        final companyDoc = await firestore
+            .collection("companies")
+            .doc(companyId)
+            .get();
+        if (!mounted) return;
+        if (!companyDoc.exists) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    "Invalid Invite Code. Please contact your company admin.")),
+          );
+          return;
+        }
+        final companyName = companyDoc.data()?['name'] ?? "Unknown";
+
         await AuthService().registerUser(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
-          companyName: "AIQ",
-          branchId: branchId.toString(),
-          empId: firestore.collection("users").doc().id,
+          companyId: companyId,
+          companyName: companyName,
+          branchId: branchId!,
+          empId: companyId,
           name: _nameController.text.trim(),
-          phone: _phoneController.text,
+          phone: _phoneController.text.trim(),
           role: role,
-          skills: skillController.text.split(","),
+          skills: skillController.text.split(",").map((s) => s.trim()).toList(),
         );
         
         if (mounted) {
@@ -148,27 +200,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString())),
+          );
+        }
       }
     }
   }
 
   void getBranches() async {
-    try{
+    try {
       final querySnapshot = await firestore.collection("branches").get();
-      setState(() {
-        branches= querySnapshot.docs.map((doc){
-          final data = doc.data() as Map<String, dynamic>;
-          return {
-            "name": data["name"],
-            "branchId": doc.id,
-          };
-        }).toList();
-      });
-    } catch(e) {
-      print(e);
+      if (mounted) {
+        setState(() {
+          branches = querySnapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              "name": data["name"],
+              "branchId": doc.id,
+            };
+          }).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint(e.toString());
     }
   }
 
@@ -197,13 +253,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Container(
                 height: 230,
                 width: double.infinity,
-                color: colorScheme.primary,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.primary,
+                      colorScheme.primary.withValues(alpha: 0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
                 padding: const EdgeInsets.fromLTRB(30, 80, 30, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Welcome!', style: TextStyle( fontSize: 16,color:colorScheme.onPrimary, fontWeight: FontWeight.w500)),
-                  Text("Sign Up", style: TextStyle( fontSize: 42, fontWeight: FontWeight.bold,color:colorScheme.onPrimary)),
+                    Text('Welcome!',
+                        style: TextStyle(
+                            fontSize: 16,
+                            color: colorScheme.onPrimary,
+                            fontWeight: FontWeight.w500)),
+                    Text("Sign Up",
+                        style: TextStyle(
+                            fontSize: 42,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onPrimary)),
                   ],
                 ),
               ),
@@ -216,6 +289,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
+                    TextFormField(
+                      controller: _inviteCodeController,
+                      decoration: const InputDecoration(
+                        hintText: 'Invite Code (Company ID)', 
+                        icon: Icon(Icons.business_center),
+                      ),
+                      validator: (v) => v!.isEmpty ? "Enter your company invite code" : null,
+                    ),
+                    const SizedBox(height: 10),
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(hintText: 'Full Name', icon: Icon(Icons.person)),
@@ -268,10 +350,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 20),
                     DropdownButtonFormField<String>(
-                      value: branchId,
+                      initialValue: branchId,
                       hint: const Text("Select Branch"),
-                      items: branches.map((b) => DropdownMenuItem(value: b['branchId'] as String, child: Text(b['name']))).toList(),
+                      items: branches
+                          .map((b) => DropdownMenuItem(
+                              value: b['branchId'] as String,
+                              child: Text(b['name'])))
+                          .toList(),
                       onChanged: (v) => setState(() => branchId = v),
+                      validator: (v) => v == null ? "Select a branch" : null,
                     ),
                     const SizedBox(height: 20),
                     Container(
@@ -363,17 +450,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onTap: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            MaterialPageRoute(
+                                builder: (context) => const LoginScreen()),
                           );
                         },
                         child: RichText(
                           text: TextSpan(
                             text: "Already Have An Account? ",
-                            style: GoogleFonts.montserrat(color: colorScheme.onSurface.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.montserrat(
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.5),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
                             children: [
                               TextSpan(
                                 text: 'Sign In',
-                                style: GoogleFonts.montserrat(color: colorScheme.primary, fontWeight: FontWeight.bold),
+                                style: GoogleFonts.montserrat(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),

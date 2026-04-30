@@ -10,6 +10,7 @@ class AuthService {
   Future<void> registerUser({
     required String email,
     required String password,
+    required String companyId,
     required String companyName,
     required String branchId,
     required String empId,
@@ -25,6 +26,7 @@ class AuthService {
       if (user != null) {
         UserModel userModel = UserModel(
             userId: user.uid,
+            companyId: companyId,
             companyName: companyName,
             branchId: branchId,
             empId: empId,

@@ -2,191 +2,182 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Palette Colors
-  static const Color color1 = Color(0xFF346739);
-  static const Color color2 = Color(0xFF79AE6F);
-  static const Color color3 = Color(0xFF9FCB98);
-  static const Color color4 = Color(0xFFF2EDC2);
+  // Brand Colors based on the provided Design image
+  static const Color neonGreen = Color(0xFF00E676);
+  static const Color darkTeal = Color(0xFF1A2421);
+  static const Color deepBlack = Color(0xFF0D0D0D);
+  static const Color lightGrey = Color(0xFFF8F9F9);
 
   // Light Theme Colors
-  static const Color lightPrimary = color1;
-  static const Color lightBackground = Colors.white;
-  static const Color lightSurface = Colors.white; // Using white for cleaner surface in light mode
-  static const Color lightSecondary = color2;
-  static const Color lightTextPrimary = color1;
-  static const Color lightTextSecondary = color2;
+  static const Color lightPrimary = Color(0xFF00C853); // A slightly more solid green for light mode
+  static const Color lightBackground = lightGrey;
+  static const Color lightSurface = Colors.white;
+  static const Color lightOnSurface = Color(0xFF1A2421);
 
   static ThemeData get lightTheme {
     return ThemeData(
+      useMaterial3: true,
       scaffoldBackgroundColor: lightBackground,
       primaryColor: lightPrimary,
-      useMaterial3: true,
+      colorScheme: const ColorScheme.light(
+        primary: lightPrimary,
+        secondary: darkTeal,
+        surface: lightSurface,
+        onPrimary: Colors.white,
+        onSurface: lightOnSurface,
+        background: lightBackground,
+        onBackground: lightOnSurface,
+      ),
+      textTheme: GoogleFonts.montserratTextTheme(ThemeData.light().textTheme).apply(
+        bodyColor: lightOnSurface,
+        displayColor: lightOnSurface,
+      ),
       timePickerTheme: TimePickerThemeData(
         backgroundColor: lightSurface,
         hourMinuteTextColor: lightPrimary,
         hourMinuteShape: RoundedRectangleBorder(
-          borderRadius: BorderRadiusGeometry.circular(8),
-          side: BorderSide(color:  lightPrimary,width: 2),
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: lightPrimary, width: 2),
         ),
-        dayPeriodBorderSide: BorderSide(color: lightPrimary, width: 2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.circular(20)),
-        entryModeIconColor: lightPrimary
-
-      ),
-      colorScheme: const ColorScheme.light(
-        primary: lightPrimary,
-        secondary: lightSecondary,
-        surface: lightSurface,
-        onPrimary: Colors.white,
-        onSurface: lightTextPrimary,
-        background: lightBackground,
-        onBackground: lightTextPrimary,
-      ),
-      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme).apply(
-        bodyColor: lightTextPrimary,
-        displayColor: lightTextPrimary,
+        dayPeriodBorderSide: const BorderSide(color: lightPrimary, width: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        entryModeIconColor: lightPrimary,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: lightPrimary,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
+          textStyle: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: lightPrimary,
         foregroundColor: Colors.white,
-        elevation: 0,
-        iconSize: 30,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      iconTheme: IconThemeData(color:lightSurface),
-
-
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
         hintStyle: TextStyle(
-            color: lightTextSecondary.withOpacity(0.5),
-            fontSize: 13,
+            color: lightOnSurface.withValues(alpha: 0.4),
+            fontSize: 14,
             fontWeight: FontWeight.w500),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: lightPrimary, width: 1),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: lightPrimary, width: 1.5),
         ),
         iconColor: lightPrimary,
         prefixIconColor: lightPrimary,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: lightBackground,
-        foregroundColor: lightPrimary,
+        foregroundColor: lightOnSurface,
         elevation: 0,
         centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: lightOnSurface,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
   // Dark Theme Colors
-  static const Color darkPrimary = color3;
-  static const Color darkBackground = color1;
-  static const Color darkSurface = Color(0xFF2C5730); // Slightly lighter than background
-  static const Color darkSecondary = color2;
-  static const Color darkTextPrimary = Colors.white;
-  static const Color darkTextSecondary = color3;
+  static const Color darkPrimary = neonGreen;
+  static const Color darkBackground = deepBlack;
+  static const Color darkSurface = Color(0xFF1E1E1E);
+  static const Color darkOnSurface = Colors.white;
 
   static ThemeData get darkTheme {
     return ThemeData(
+      useMaterial3: true,
       scaffoldBackgroundColor: darkBackground,
       primaryColor: darkPrimary,
-      useMaterial3: true,
-      timePickerTheme: TimePickerThemeData(
-        backgroundColor: darkSurface,
-        entryModeIconColor: darkSurface,
-        hourMinuteTextColor: darkTextPrimary,
-        hourMinuteShape: RoundedRectangleBorder(
-          borderRadius: BorderRadiusGeometry.circular(8),
-          side: BorderSide(color: darkSecondary,width: 2)
-        ),
-        dayPeriodBorderSide: BorderSide(color:  darkSurface),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.circular(20)),
-
-      ),
-
       colorScheme: const ColorScheme.dark(
         primary: darkPrimary,
-        secondary: darkSecondary,
+        secondary: Color(0xFF00BFA5),
         surface: darkSurface,
-        onPrimary: color1,
-        onSurface: darkTextPrimary,
+        onPrimary: deepBlack,
+        onSurface: darkOnSurface,
         background: darkBackground,
-        onBackground: darkTextPrimary,
+        onBackground: darkOnSurface,
       ),
-      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).apply(
-        bodyColor: darkTextPrimary,
-        displayColor: darkTextPrimary,
+      textTheme: GoogleFonts.montserratTextTheme(ThemeData.dark().textTheme).apply(
+        bodyColor: darkOnSurface,
+        displayColor: darkOnSurface,
+      ),
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: darkSurface,
+        hourMinuteTextColor: darkPrimary,
+        hourMinuteShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: darkPrimary, width: 2),
+        ),
+        dayPeriodBorderSide: const BorderSide(color: darkPrimary, width: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        entryModeIconColor: darkPrimary,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: darkPrimary,
-          foregroundColor: color1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
+          foregroundColor: deepBlack,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
+          textStyle: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: darkPrimary,
-        foregroundColor: color1,
-        elevation: 0,
-        iconSize: 30,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
+        foregroundColor: deepBlack,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      iconTheme: const IconThemeData(color: darkPrimary),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: darkSurface,
         hintStyle: TextStyle(
-            color: darkTextSecondary.withOpacity(0.5),
-            fontSize: 13,
+            color: darkOnSurface.withValues(alpha: 0.4),
+            fontSize: 14,
             fontWeight: FontWeight.w500),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: darkPrimary, width: 1),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: darkPrimary, width: 1.5),
         ),
         iconColor: darkPrimary,
         prefixIconColor: darkPrimary,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: darkBackground,
         foregroundColor: darkPrimary,
         elevation: 0,
         centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: darkPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

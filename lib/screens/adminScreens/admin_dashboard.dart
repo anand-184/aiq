@@ -31,11 +31,6 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
     final colorScheme = theme.colorScheme;
     final viewModel = Provider.of<AdminViewModel>(context);
 
-    // Mock setting context for now - in real app, this happens after login
-    if (viewModel.currentCompanyId == null) {
-      viewModel.setCompanyContext("COMP-123", "Techcadd");
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
@@ -91,48 +86,220 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
   void _showAddTaskDialog(BuildContext context, AdminViewModel vm) {
     final titleController = TextEditingController();
     final descController = TextEditingController();
+    final skillsController = TextEditingController();
     String priority = "Medium";
-    
+    String? assignedToId;
+    DateTime startTime = DateTime.now().add(const Duration(hours: 1));
+    DateTime endTime = DateTime.now().add(const Duration(hours: 3));
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text("Create New Task"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: "Task Title"),
-              ),
-              TextField(
-                controller: descController,
-                decoration: const InputDecoration(labelText: "Description"),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: priority,
-                items: ["Low", "Medium", "High", "Critical"].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                onChanged: (val) => setDialogState(() => priority = val!),
-                decoration: const InputDecoration(labelText: "Priority"),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: "Task Title"),
+                ),
+                TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(labelText: "Description"),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: skillsController,
+                  decoration: const InputDecoration(
+                    labelText: "Required Skills (comma separated)",
+                    prefixIcon: Icon(Icons.psychology),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      final skills = skillsController.text
+                          .split(",")
+                          .map((s) => s.trim())
+                          .where((s) => s.isNotEmpty)
+                          .toList();
+                      vm.getAIRecommendations(
+                        requiredSkills: skills,
+                        startTime: startTime,
+                        endTime: endTime,
+                      );
+                    },
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text("Get Smart Recommendations"),
+                  ),
+                ),
+                if (vm.isLoadingRecommendations)
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: CircularProgressIndicator(),
+                  ),
+                if (vm.smartRecommendations.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  const Text("AI Suggestions:",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  SizedBox(
+                    height: 100,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: vm.smartRecommendations.length,
+                      itemBuilder: (context, index) {
+                        final rec = vm.smartRecommendations[index];
+                        final isSelected = assignedToId == rec['userId'];
+                        return GestureDetector(
+                          onTap: () => setDialogState(() => assignedToId = rec['userId']),
+                          child: Container(
+                            width: 120,
+                            margin: const EdgeInsets.only(right: 8, top: 4),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? colorScheme.primaryContainer : colorScheme.surface,
+                              border: Border.all(color: isSelected ? colorScheme.primary : colorScheme.outline),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(rec['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), overflow: TextOverflow.ellipsis),
+                                Text("Score: ${rec['score']}", style: TextStyle(color: colorScheme.primary, fontSize: 10, fontWeight: FontWeight.bold)),
+                                Text(rec['isAvailable'] ? "Available" : "Busy", style: TextStyle(color: rec['isAvailable'] ? Colors.green : Colors.red, fontSize: 9)),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                StreamBuilder<List<UserModel>>(
+                  stream: vm.employeesStream,
+                  builder: (context, snapshot) {
+                    final employees = snapshot.data ?? [];
+                    return DropdownButtonFormField<String>(
+                      value: assignedToId,
+                      hint: const Text("Assign To Employee"),
+                      items: employees
+                          .map((e) => DropdownMenuItem(
+                              value: e.userId, child: Text(e.name)))
+                          .toList(),
+                      onChanged: (val) =>
+                          setDialogState(() => assignedToId = val),
+                      decoration: const InputDecoration(labelText: "Assignee"),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: priority,
+                  items: ["Low", "Medium", "High", "Critical"]
+                      .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                      .toList(),
+                  onChanged: (val) => setDialogState(() => priority = val!),
+                  decoration: const InputDecoration(labelText: "Priority"),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text("Start Time"),
+                  subtitle: Text(startTime.toString().substring(0, 16)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: startTime,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null) {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(startTime),
+                      );
+                      if (time != null) {
+                        setDialogState(() {
+                          startTime = DateTime(
+                              date.year, date.month, date.day, time.hour, time.minute);
+                        });
+                      }
+                    }
+                  },
+                ),
+                ListTile(
+                  title: const Text("End Time"),
+                  subtitle: Text(endTime.toString().substring(0, 16)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: endTime,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null) {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(endTime),
+                      );
+                      if (time != null) {
+                        setDialogState(() {
+                          endTime = DateTime(
+                              date.year, date.month, date.day, time.hour, time.minute);
+                        });
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel")),
             ElevatedButton(
-              onPressed: () {
-                vm.addTask(
+              onPressed: () async {
+                if (assignedToId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please assign to an employee")),
+                  );
+                  return;
+                }
+                final result = await vm.addTask(
                   title: titleController.text,
                   description: descController.text,
-                  assignedTo: "Unassigned",
-                  startTime: DateTime.now(),
-                  endTime: DateTime.now().add(const Duration(hours: 2)),
+                  assignedTo: assignedToId!,
+                  startTime: startTime,
+                  endTime: endTime,
                   basePriority: priority,
                   branchId: "Main",
-                  assignedBy: "Admin",
+                  assignedBy: vm.currentUserId ?? "Admin",
+                  requiredSkills: skillsController.text
+                      .split(",")
+                      .map((s) => s.trim())
+                      .where((s) => s.isNotEmpty)
+                      .toList(),
                 );
-                Navigator.pop(context);
+
+                if (context.mounted) {
+                  if (result == "success") {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Task created successfully")),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result)),
+                    );
+                  }
+                }
               },
               child: const Text("Create Task"),
             ),
@@ -366,22 +533,47 @@ class _AdminOverviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = Provider.of<AdminViewModel>(context);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Team Performance", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text("Team Performance",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              _buildStatCard(context, "Active Tasks", "24", Icons.task, Colors.blue),
-              const SizedBox(width: 16),
-              _buildStatCard(context, "Team KPM", "42", Icons.speed, Colors.orange),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildStatCard(context, "Utilization", "78%", Icons.pie_chart, Colors.green, fullWidth: true),
+          StreamBuilder<List<TaskModel>>(
+              stream: viewModel.tasksStream,
+              builder: (context, taskSnapshot) {
+                final activeTasks = taskSnapshot.data
+                        ?.where((t) => t.status != 'Completed')
+                        .length ??
+                    0;
+                return StreamBuilder<List<UserModel>>(
+                    stream: viewModel.employeesStream,
+                    builder: (context, empSnapshot) {
+                      final teamSize = empSnapshot.data?.length ?? 0;
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              _buildStatCard(context, "Active Tasks",
+                                  "$activeTasks", Icons.task, Colors.blue),
+                              const SizedBox(width: 16),
+                              _buildStatCard(context, "Team Size", "$teamSize",
+                                  Icons.people, Colors.orange),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatCard(context, "Company ID",
+                              viewModel.currentCompanyId ?? "N/A",
+                              Icons.business, Colors.green,
+                              fullWidth: true),
+                        ],
+                      );
+                    });
+              }),
         ],
       ),
     );

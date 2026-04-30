@@ -6,6 +6,7 @@ import 'package:aiq/screens/super_admin_screens/super_admin_dashboard.dart';
 import 'package:aiq/theme/apptheme.dart';
 import 'package:aiq/viewmodels/super_admin_viewmodel.dart';
 import 'package:aiq/viewmodels/admin_viewmodel.dart';
+import 'package:aiq/services/notification_service.dart';
 import 'package:aiq/services/analytics_service.dart';
 import 'package:aiq/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -17,6 +18,9 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize Notifications
+  await NotificationService().initialize();
 
   runApp(
     MultiProvider(
@@ -44,7 +48,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       navigatorObservers: [analyticsService.observer],
-      home: const SuperAdminDashboard(),
+      home: const LoginScreen(),
     );
   }
 }
