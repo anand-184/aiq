@@ -128,13 +128,33 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   stream: vm.branchesStream,
                   builder: (context, snapshot) {
                     final branches = snapshot.data ?? [];
+                    final items = <DropdownMenuItem<String>>[];
+                    final seenIds = <String>{};
+
+                    for (var b in branches) {
+                      final id = b.branchId ?? "";
+                      if (id.isNotEmpty && seenIds.add(id)) {
+                        items.add(DropdownMenuItem(
+                            value: id, child: Text(b.branchName)));
+                      }
+                    }
+
+                    // Safety check: Ensure selected value exists and is unique
+                    if (selectedBranchId != null &&
+                        selectedBranchId!.isNotEmpty &&
+                        !seenIds.contains(selectedBranchId)) {
+                      items.add(DropdownMenuItem(
+                          value: selectedBranchId,
+                          child: Text("Branch: $selectedBranchId")));
+                    }
+
                     return DropdownButtonFormField<String>(
-                      value: selectedBranchId,
+                      value: (selectedBranchId != null &&
+                              selectedBranchId!.isNotEmpty)
+                          ? selectedBranchId
+                          : null,
                       hint: const Text("Select Branch"),
-                      items: branches
-                          .map((b) => DropdownMenuItem(
-                              value: b.branchId, child: Text(b.branchName)))
-                          .toList(),
+                      items: items,
                       onChanged: (val) =>
                           setDialogState(() => selectedBranchId = val),
                       decoration: const InputDecoration(labelText: "Branch"),
@@ -235,13 +255,33 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   stream: vm.branchesStream,
                   builder: (context, snapshot) {
                     final branches = snapshot.data ?? [];
+                    final items = <DropdownMenuItem<String>>[];
+                    final seenIds = <String>{};
+
+                    for (var b in branches) {
+                      final id = b.branchId ?? "";
+                      if (id.isNotEmpty && seenIds.add(id)) {
+                        items.add(DropdownMenuItem(
+                            value: id, child: Text(b.branchName)));
+                      }
+                    }
+
+                    // Safety check: Ensure selected value exists and is unique
+                    if (selectedBranchId != null &&
+                        selectedBranchId!.isNotEmpty &&
+                        !seenIds.contains(selectedBranchId)) {
+                      items.add(DropdownMenuItem(
+                          value: selectedBranchId,
+                          child: Text("Branch: $selectedBranchId")));
+                    }
+
                     return DropdownButtonFormField<String>(
-                      value: selectedBranchId,
+                      value: (selectedBranchId != null &&
+                              selectedBranchId!.isNotEmpty)
+                          ? selectedBranchId
+                          : null,
                       hint: const Text("Select Branch"),
-                      items: branches
-                          .map((b) => DropdownMenuItem(
-                              value: b.branchId, child: Text(b.branchName)))
-                          .toList(),
+                      items: items,
                       onChanged: (val) =>
                           setDialogState(() => selectedBranchId = val),
                       decoration: const InputDecoration(labelText: "Branch"),
@@ -253,13 +293,25 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   stream: vm.employeesStream,
                   builder: (context, snapshot) {
                     final employees = snapshot.data ?? [];
+                    final items = <DropdownMenuItem<String>>[];
+                    final seenIds = <String>{};
+
+                    for (var e in employees) {
+                      if (seenIds.add(e.userId)) {
+                        items.add(DropdownMenuItem(
+                            value: e.userId, child: Text(e.name)));
+                      }
+                    }
+
+                    if (assignedToId != null && !seenIds.contains(assignedToId)) {
+                      items.add(DropdownMenuItem(
+                          value: assignedToId, child: Text("ID: $assignedToId")));
+                    }
+
                     return DropdownButtonFormField<String>(
                       value: assignedToId,
                       hint: const Text("Assign To Employee"),
-                      items: employees
-                          .map((e) => DropdownMenuItem(
-                              value: e.userId, child: Text(e.name)))
-                          .toList(),
+                      items: items,
                       onChanged: (val) =>
                           setDialogState(() => assignedToId = val),
                       decoration: const InputDecoration(labelText: "Assignee"),
@@ -268,7 +320,7 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  initialValue: priority,
+                  value: priority,
                   items: ["Low", "Medium", "High", "Critical"]
                       .map((p) => DropdownMenuItem(value: p, child: Text(p)))
                       .toList(),
@@ -1037,13 +1089,33 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                 stream: vm.branchesStream,
                 builder: (context, snapshot) {
                   final branches = snapshot.data ?? [];
+                  final items = <DropdownMenuItem<String>>[];
+                  final seenIds = <String>{};
+
+                  for (var b in branches) {
+                    final id = b.branchId ?? "";
+                    if (id.isNotEmpty && seenIds.add(id)) {
+                      items.add(DropdownMenuItem(
+                          value: id, child: Text(b.branchName)));
+                    }
+                  }
+
+                  // Safety check: Ensure selected value exists and is unique
+                  if (selectedBranchId != null &&
+                      selectedBranchId!.isNotEmpty &&
+                      !seenIds.contains(selectedBranchId)) {
+                    items.add(DropdownMenuItem(
+                        value: selectedBranchId,
+                        child: Text("Branch: $selectedBranchId")));
+                  }
+
                   return DropdownButtonFormField<String>(
-                    value: selectedBranchId,
+                    value: (selectedBranchId != null &&
+                            selectedBranchId!.isNotEmpty)
+                        ? selectedBranchId
+                        : null,
                     hint: const Text("Select Branch"),
-                    items: branches
-                        .map((b) => DropdownMenuItem(
-                            value: b.branchId, child: Text(b.branchName)))
-                        .toList(),
+                    items: items,
                     onChanged: (val) =>
                         setDialogState(() => selectedBranchId = val),
                     decoration: const InputDecoration(labelText: "Branch"),
@@ -1055,13 +1127,30 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                 stream: vm.employeesStream,
                 builder: (context, snapshot) {
                   final employees = snapshot.data ?? [];
+                  final items = <DropdownMenuItem<String>>[];
+                  final seenIds = <String>{};
+
+                  for (var e in employees) {
+                    if (e.userId.isNotEmpty && seenIds.add(e.userId)) {
+                      items.add(DropdownMenuItem(
+                          value: e.userId, child: Text(e.name)));
+                    }
+                  }
+
+                  if (assignedToId != null &&
+                      assignedToId!.isNotEmpty &&
+                      !seenIds.contains(assignedToId)) {
+                    items.add(DropdownMenuItem(
+                        value: assignedToId,
+                        child: Text("Employee: $assignedToId")));
+                  }
+
                   return DropdownButtonFormField<String>(
-                    value: assignedToId,
+                    value: (assignedToId != null && assignedToId!.isNotEmpty)
+                        ? assignedToId
+                        : null,
                     hint: const Text("Assign To Employee"),
-                    items: employees
-                        .map((e) => DropdownMenuItem(
-                            value: e.userId, child: Text(e.name)))
-                        .toList(),
+                    items: items,
                     onChanged: (val) =>
                         setDialogState(() => assignedToId = val),
                     decoration: const InputDecoration(labelText: "Assignee"),
