@@ -66,12 +66,14 @@ class SuperAdminViewModel extends ChangeNotifier {
 
       // 2. Create Admin Account in Firebase Auth and Firestore Users collection
       // This helper handles both and prevents Super Admin logout
-      await _authService.registerAdminInBackground(
+      await _authService.registerUserInBackground(
         email: ownerEmail,
         password: pass, // Raw password needed for Firebase Auth creation
         name: ownerName,
         companyId: companyId,
         companyName: name,
+        role: "Manager",
+        branchId: "Main",
       );
 
     } catch (e) {

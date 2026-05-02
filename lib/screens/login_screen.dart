@@ -243,11 +243,46 @@ class _LoginScreenState extends State<LoginScreen> {
                                         MaterialPageRoute(builder: (context) => const EmpHomescreen()));
                                   }
                                 } else {
-                                  // User found in Auth but not in Firestore
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text("Account profile not found. Please register again.")),
-                                  );
-                                  setState(() => _isLoading = false);
+                                  // NEW: Fallback for Company Admins whose user profile might be missing
+                                  final companyQuery = await FirebaseFirestore.instance
+                                      .collection('companies')
+                                      .where('ownerEmail', isEqualTo: user.email)
+                                      .limit(1)
+                                      .get();
+
+                                  if (companyQuery.docs.isNotEmpty) {
+                                    // It's a company admin, but profile is missing. 
+                                    // Let's create the missing profile now.
+                                    final companyData = companyQuery.docs.first.data();
+                                    final companyId = companyData['companyId'];
+                                    final companyName = companyData['name'];
+                                    final ownerName = companyData['ownerName'];
+
+                                    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+                                      'userId': user.uid,
+                                      'companyId': companyId,
+                                      'companyName': companyName,
+                                      'name': ownerName,
+                                      'email': user.email,
+                                      'role': 'Manager',
+                                      'branchId': 'Main',
+                                      'empId': 'ADMIN-$companyId',
+                                      'maxCapacityHoursPerWeek': 40.0,
+                                      'currentWorkloadPercentage': 0.0,
+                                      'createdAt': FieldValue.serverTimestamp(),
+                                    });
+
+                                    if (mounted) {
+                                      Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const CompanyAdminDashboard()));
+                                    }
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text("Account profile not found. Please register again.")),
+                                    );
+                                    setState(() => _isLoading = false);
+                                  }
                                 }
                               } catch (e) {
                                 if (mounted) {

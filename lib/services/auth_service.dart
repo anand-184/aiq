@@ -16,16 +16,21 @@ class AuthService {
     return digest.toString();
   }
 
-  /// Registers a company admin without signing out the Super Admin.
-  Future<String?> registerAdminInBackground({
+  /// Registers a user in the background without signing out the current user.
+  Future<String?> registerUserInBackground({
     required String email,
     required String password,
     required String name,
     required String companyId,
     required String companyName,
+    required String role,
+    required String branchId,
+    List<String> skills = const [],
+    double maxCapacity = 40.0,
   }) async {
+    String tempAppName = 'TempApp_${DateTime.now().millisecondsSinceEpoch}';
     FirebaseApp tempApp = await Firebase.initializeApp(
-      name: 'TempOnboardingApp',
+      name: tempAppName,
       options: Firebase.app().options,
     );
 
@@ -35,26 +40,27 @@ class AuthService {
       
       String uid = userCredential.user!.uid;
 
-      UserModel adminModel = UserModel(
+      UserModel userModel = UserModel(
         userId: uid,
         password: hashPassword(password),
         companyId: companyId,
         companyName: companyName,
-        branchId: "Main",
-        empId: "ADMIN-$companyId",
+        branchId: branchId,
+        empId: role == "Manager" ? "ADMIN-$companyId" : "EMP-${uid.substring(0, 5)}",
         name: name,
         email: email,
-        role: "Manager",
-        maxCapacityHoursPerWeek: 40,
+        role: role,
+        skills: skills,
+        maxCapacityHoursPerWeek: maxCapacity,
         createdAt: DateTime.now(),
         currentWorkloadPercentage: 0.0,
       );
 
-      await fireStore.collection("users").doc(uid).set(adminModel.toJson());
+      await fireStore.collection("users").doc(uid).set(userModel.toJson());
       await tempApp.delete();
       return uid;
     } catch (e) {
-      debugPrint("Error creating admin account: $e");
+      debugPrint("Error creating account in background: $e");
       await tempApp.delete();
       rethrow;
     }

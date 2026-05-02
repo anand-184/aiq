@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/task_model.dart';
 import '../models/user_model.dart';
 import '../models/branch.dart';
+import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 
 class AdminViewModel extends ChangeNotifier {
@@ -14,6 +15,23 @@ class AdminViewModel extends ChangeNotifier {
   String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
   TimeOfDay startHour = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay endHour = const TimeOfDay(hour: 18, minute: 0);
+
+  AdminViewModel() {
+    _initializeContext();
+  }
+
+  void _initializeContext() {
+    final String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      _firestoreService.getUserDetails(uid).listen((user) {
+        currentCompanyId = user.companyId;
+        currentCompanyName = user.companyName;
+        notifyListeners();
+      }, onError: (e) {
+        debugPrint("Error initializing AdminViewModel: $e");
+      });
+    }
+  }
 
   void updateWorkingHours(TimeOfDay start, TimeOfDay end) async {
     startHour = start;
@@ -67,13 +85,20 @@ class AdminViewModel extends ChangeNotifier {
   }
 
   // Branch CRUD
-  Future<void> addBranch(String name) async {
-    if (currentCompanyName == null) return;
+  Future<String> addBranch(String name) async {
+    if (currentCompanyName == null) {
+      return "Error: Company context not loaded yet.";
+    }
     final branch = Branch(
       companyName: currentCompanyName!,
       branchName: name,
     );
-    await _firestoreService.createBranch(branch);
+    try {
+      await _firestoreService.createBranch(branch);
+      return "success";
+    } catch (e) {
+      return "Error: $e";
+    }
   }
 
   Future<void> updateBranch(Branch branch) async {
@@ -140,6 +165,36 @@ class AdminViewModel extends ChangeNotifier {
 
   Future<void> updateEmployee(UserModel user) async {
     await _firestoreService.updateUser(user);
+  }
+
+  Future<String> addEmployee({
+    required String email,
+    required String password,
+    required String name,
+    required String role,
+    required String branchId,
+    required List<String> skills,
+  }) async {
+    if (currentCompanyId == null || currentCompanyName == null) {
+      return "Error: Company context not set. Please wait for profile to load.";
+    }
+
+    try {
+      final uid = await AuthService().registerUserInBackground(
+        email: email,
+        password: password,
+        name: name,
+        companyId: currentCompanyId!,
+        companyName: currentCompanyName!,
+        role: role,
+        branchId: branchId,
+        skills: skills,
+      );
+      return uid != null ? "success" : "Error: Failed to create user.";
+    } catch (e) {
+      debugPrint("Error adding employee: $e");
+      return "Error: $e";
+    }
   }
 
   Future<void> logout() async {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import '../login_screen.dart';
 import '../../models/branch.dart';
 import '../../models/task_model.dart';
 import '../../models/user_model.dart';
@@ -83,7 +84,123 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
               onPressed: () => _showAddTaskDialog(context, viewModel),
               child: const Icon(Icons.add_task),
             )
-          : null,
+          : _selectedIndex == 2
+              ? FloatingActionButton(
+                  onPressed: () => _showAddMemberDialog(context, viewModel),
+                  child: const Icon(Icons.person_add),
+                )
+              : null,
+    );
+  }
+
+  void _showAddMemberDialog(BuildContext context, AdminViewModel vm) {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final skillController = TextEditingController();
+    String role = "Employee";
+    String? selectedBranchId;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text("Add Team Member"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: "Full Name"),
+                ),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(labelText: "Email"),
+                ),
+                TextField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(labelText: "Initial Password"),
+                  obscureText: true,
+                ),
+                const SizedBox(height: 16),
+                StreamBuilder<List<Branch>>(
+                  stream: vm.branchesStream,
+                  builder: (context, snapshot) {
+                    final branches = snapshot.data ?? [];
+                    return DropdownButtonFormField<String>(
+                      value: selectedBranchId,
+                      hint: const Text("Select Branch"),
+                      items: branches
+                          .map((b) => DropdownMenuItem(
+                              value: b.branchId, child: Text(b.branchName)))
+                          .toList(),
+                      onChanged: (val) =>
+                          setDialogState(() => selectedBranchId = val),
+                      decoration: const InputDecoration(labelText: "Branch"),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: role,
+                  items: ["Employee", "Manager"]
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                      .toList(),
+                  onChanged: (val) => setDialogState(() => role = val!),
+                  decoration: const InputDecoration(labelText: "Role"),
+                ),
+                TextField(
+                  controller: skillController,
+                  decoration: const InputDecoration(
+                      labelText: "Skills (Comma separated)"),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel")),
+            ElevatedButton(
+              onPressed: () async {
+                if (selectedBranchId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please select a branch")),
+                  );
+                  return;
+                }
+                final result = await vm.addEmployee(
+                  email: emailController.text.trim(),
+                  password: passwordController.text.trim(),
+                  name: nameController.text.trim(),
+                  role: role,
+                  branchId: selectedBranchId!,
+                  skills: skillController.text
+                      .split(",")
+                      .map((s) => s.trim())
+                      .where((s) => s.isNotEmpty)
+                      .toList(),
+                );
+
+                if (context.mounted) {
+                  if (result == "success") {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Member added successfully")),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result)),
+                    );
+                  }
+                }
+              },
+              child: const Text("Add Member"),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -308,9 +425,16 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
         ),
       ),
       selected: isSelected,
-      onTap: () {
+      onTap: () async {
         if (isLogout) {
-          Navigator.pop(context);
+          final vm = Provider.of<AdminViewModel>(context, listen: false);
+          await vm.logout();
+          if (context.mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+            );
+          }
         } else {
           setState(() => _selectedIndex = index);
           Navigator.pop(context);
@@ -377,7 +501,7 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
     // Generate hours from startHour to endHour (e.g., 9 AM to 6 PM)
     final start = vm.startHour.hour;
     final end = vm.endHour.hour;
-    
+
     return StreamBuilder<List<TaskModel>>(
       stream: vm.tasksStream,
       builder: (context, snapshot) {
@@ -389,39 +513,109 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
           itemBuilder: (context, index) {
             final hour = start + index;
             final timeLabel = "${hour > 12 ? hour - 12 : hour} ${hour >= 12 ? 'PM' : 'AM'}";
-            
-            // Check if any task falls into this hour slot
-            final taskInSlot = tasks.firstWhere(
+
+            // Find all tasks that overlap with this hour slot
+            final tasksInSlot = tasks.where(
               (t) => t.startTime.hour <= hour && t.endTime.hour > hour,
-              orElse: () => TaskModel(
-                taskId: '', companyId: '', branchId: '', title: '', description: '',
-                assignedTo: '', assignedBy: '', startTime: DateTime.now(), endTime: DateTime.now(),
-                estimatedDurationMinutes: 0, basePriority: '', createdAt: DateTime.now(),
-              ),
-            );
+            ).toList();
 
-            final isBusy = taskInSlot.taskId.isNotEmpty;
+            final isBusy = tasksInSlot.isNotEmpty;
 
-            return Container(
-              height: 80,
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: isBusy ? Colors.blue.withOpacity(0.1) : Colors.grey.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isBusy ? Colors.blue : Colors.transparent),
-              ),
-              child: ListTile(
-                leading: SizedBox(width: 60, child: Text(timeLabel, style: const TextStyle(fontWeight: FontWeight.bold))),
-                title: isBusy 
-                  ? Text(taskInSlot.title, style: const TextStyle(fontWeight: FontWeight.bold))
-                  : const Text("Free Slot", style: TextStyle(color: Colors.grey)),
-                subtitle: isBusy ? Text(taskInSlot.description) : null,
-                trailing: isBusy ? const Icon(Icons.lock, color: Colors.blue) : const Icon(Icons.add_circle_outline),
+            return InkWell(
+              onTap: isBusy 
+                ? () => showEditTaskDialog(context, vm, tasksInSlot.first)
+                : () => _showAddTaskForSlot(context, vm, member, hour),
+              child: Container(
+                height: 80,
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: isBusy ? Colors.blue.withOpacity(0.1) : Colors.grey.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isBusy ? Colors.blue : Colors.transparent),
+                ),
+                child: ListTile(
+                  leading: SizedBox(
+                    width: 60, 
+                    child: Text(timeLabel, style: const TextStyle(fontWeight: FontWeight.bold))
+                  ),
+                  title: isBusy
+                    ? Text(tasksInSlot.map((e) => e.title).join(", "), 
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis)
+                    : const Text("Free Slot", style: TextStyle(color: Colors.grey)),
+                  subtitle: isBusy 
+                    ? Text("${tasksInSlot.length} task(s) active") 
+                    : const Text("Tap to assign task"),
+                  trailing: isBusy 
+                    ? const Icon(Icons.lock, color: Colors.blue) 
+                    : const Icon(Icons.add_circle_outline, color: Colors.grey),
+                ),
               ),
             );
           },
         );
       },
+    );
+  }
+
+  void _showAddTaskForSlot(BuildContext context, AdminViewModel vm, UserModel member, int hour) {
+    // We need to access _showAddTaskDialog from CompanyAdminDashboard, 
+    // but since we are in a sub-widget state, we'll implement a simplified version or just call a helper.
+    // For now, let's just use the existing logic in a reusable way or duplicate briefly for context.
+    
+    final now = DateTime.now();
+    final startTime = DateTime(now.year, now.month, now.day, hour, 0);
+    final endTime = startTime.add(const Duration(hours: 1));
+
+    // To use the existing _showAddTaskDialog, we'd need it to be accessible.
+    // Let's create a static helper or move it.
+    // For simplicity in this edit, I'll implement a quick 'Quick Task' dialog.
+    
+    final titleController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Quick Task for ${member.name}"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Time: ${hour}:00 - ${hour+1}:00"),
+            const SizedBox(height: 16),
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: "Task Title", hintText: "e.g., Client Meeting"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              if (titleController.text.isEmpty) return;
+              
+              final result = await vm.addTask(
+                title: titleController.text,
+                description: "Scheduled via Workload Planner",
+                assignedTo: member.userId,
+                startTime: startTime,
+                endTime: endTime,
+                basePriority: "Medium",
+                branchId: member.branchId,
+                assignedBy: vm.currentUserId ?? "Admin",
+              );
+              
+              if (context.mounted) {
+                Navigator.pop(context);
+                if (result != "success") {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+                }
+              }
+            },
+            child: const Text("Schedule"),
+          )
+        ],
+      ),
     );
   }
 }
@@ -520,10 +714,17 @@ class _ManageBranchesScreen extends StatelessWidget {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (controller.text.isNotEmpty) {
-                vm.addBranch(controller.text);
-                Navigator.pop(context);
+                final result = await vm.addBranch(controller.text);
+                if (context.mounted) {
+                  if (result != "success") {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result)),
+                    );
+                  }
+                  Navigator.pop(context);
+                }
               }
             },
             child: const Text("Add"),
@@ -720,8 +921,8 @@ class _AdminOverviewScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          _buildStatCard(context, "Company ID",
-                              viewModel.currentCompanyId ?? "N/A",
+                          _buildStatCard(context, "Company",
+                              viewModel.currentCompanyName ?? "Loading...",
                               Icons.business, Colors.green,
                               fullWidth: true),
                         ],
@@ -776,9 +977,9 @@ class _TaskManagementScreen extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
-                onTap: () => _showEditTaskDialog(context, viewModel, task),
+                onTap: () => showEditTaskDialog(context, viewModel, task),
                 leading: Icon(Icons.assignment,
-                    color: _getPriorityColor(task.basePriority)),
+                    color: getPriorityColor(task.basePriority)),
                 title: Text(task.title,
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle:
@@ -794,168 +995,167 @@ class _TaskManagementScreen extends StatelessWidget {
       },
     );
   }
+}
 
-  void _showEditTaskDialog(
-      BuildContext context, AdminViewModel vm, TaskModel task) {
-    final titleController = TextEditingController(text: task.title);
-    final descController = TextEditingController(text: task.description);
-    String priority = task.basePriority;
-    String? assignedToId = task.assignedTo;
-    String? selectedBranchId = task.branchId;
-    DateTime startTime = task.startTime;
-    DateTime endTime = task.endTime;
+Color getPriorityColor(String priority) {
+  switch (priority) {
+    case 'Critical': return Colors.red;
+    case 'High': return Colors.orange;
+    case 'Medium': return Colors.blue;
+    default: return Colors.green;
+  }
+}
 
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text("Edit Task"),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(labelText: "Task Title"),
-                ),
-                TextField(
-                  controller: descController,
-                  decoration: const InputDecoration(labelText: "Description"),
-                ),
-                const SizedBox(height: 16),
-                StreamBuilder<List<Branch>>(
-                  stream: vm.branchesStream,
-                  builder: (context, snapshot) {
-                    final branches = snapshot.data ?? [];
-                    return DropdownButtonFormField<String>(
-                      value: selectedBranchId,
-                      hint: const Text("Select Branch"),
-                      items: branches
-                          .map((b) => DropdownMenuItem(
-                              value: b.branchId, child: Text(b.branchName)))
-                          .toList(),
-                      onChanged: (val) =>
-                          setDialogState(() => selectedBranchId = val),
-                      decoration: const InputDecoration(labelText: "Branch"),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                StreamBuilder<List<UserModel>>(
-                  stream: vm.employeesStream,
-                  builder: (context, snapshot) {
-                    final employees = snapshot.data ?? [];
-                    return DropdownButtonFormField<String>(
-                      value: assignedToId,
-                      hint: const Text("Assign To Employee"),
-                      items: employees
-                          .map((e) => DropdownMenuItem(
-                              value: e.userId, child: Text(e.name)))
-                          .toList(),
-                      onChanged: (val) =>
-                          setDialogState(() => assignedToId = val),
-                      decoration: const InputDecoration(labelText: "Assignee"),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: priority,
-                  items: ["Low", "Medium", "High", "Critical"]
-                      .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                      .toList(),
-                  onChanged: (val) => setDialogState(() => priority = val!),
-                  decoration: const InputDecoration(labelText: "Priority"),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: const Text("Start Time"),
-                  subtitle: Text(startTime.toString().substring(0, 16)),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final date = await showDatePicker(
+void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task) {
+  final titleController = TextEditingController(text: task.title);
+  final descController = TextEditingController(text: task.description);
+  String priority = task.basePriority;
+  String? assignedToId = task.assignedTo;
+  String? selectedBranchId = task.branchId;
+  DateTime startTime = task.startTime;
+  DateTime endTime = task.endTime;
+
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: const Text("Edit Task"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: "Task Title"),
+              ),
+              TextField(
+                controller: descController,
+                decoration: const InputDecoration(labelText: "Description"),
+              ),
+              const SizedBox(height: 16),
+              StreamBuilder<List<Branch>>(
+                stream: vm.branchesStream,
+                builder: (context, snapshot) {
+                  final branches = snapshot.data ?? [];
+                  return DropdownButtonFormField<String>(
+                    value: selectedBranchId,
+                    hint: const Text("Select Branch"),
+                    items: branches
+                        .map((b) => DropdownMenuItem(
+                            value: b.branchId, child: Text(b.branchName)))
+                        .toList(),
+                    onChanged: (val) =>
+                        setDialogState(() => selectedBranchId = val),
+                    decoration: const InputDecoration(labelText: "Branch"),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              StreamBuilder<List<UserModel>>(
+                stream: vm.employeesStream,
+                builder: (context, snapshot) {
+                  final employees = snapshot.data ?? [];
+                  return DropdownButtonFormField<String>(
+                    value: assignedToId,
+                    hint: const Text("Assign To Employee"),
+                    items: employees
+                        .map((e) => DropdownMenuItem(
+                            value: e.userId, child: Text(e.name)))
+                        .toList(),
+                    onChanged: (val) =>
+                        setDialogState(() => assignedToId = val),
+                    decoration: const InputDecoration(labelText: "Assignee"),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: priority,
+                items: ["Low", "Medium", "High", "Critical"]
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
+                onChanged: (val) => setDialogState(() => priority = val!),
+                decoration: const InputDecoration(labelText: "Priority"),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                title: const Text("Start Time"),
+                subtitle: Text(startTime.toString().substring(0, 16)),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: startTime,
+                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (date != null) {
+                    final time = await showTimePicker(
                       context: context,
-                      initialDate: startTime,
-                      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      initialTime: TimeOfDay.fromDateTime(startTime),
                     );
-                    if (date != null) {
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.fromDateTime(startTime),
-                      );
-                      if (time != null) {
-                        setDialogState(() {
-                          startTime = DateTime(date.year, date.month, date.day,
-                              time.hour, time.minute);
-                        });
-                      }
+                    if (time != null) {
+                      setDialogState(() {
+                        startTime = DateTime(date.year, date.month, date.day,
+                            time.hour, time.minute);
+                      });
                     }
-                  },
-                ),
-                ListTile(
-                  title: const Text("End Time"),
-                  subtitle: Text(endTime.toString().substring(0, 16)),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final date = await showDatePicker(
+                  }
+                },
+              ),
+              ListTile(
+                title: const Text("End Time"),
+                subtitle: Text(endTime.toString().substring(0, 16)),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: endTime,
+                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (date != null) {
+                    final time = await showTimePicker(
                       context: context,
-                      initialDate: endTime,
-                      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      initialTime: TimeOfDay.fromDateTime(endTime),
                     );
-                    if (date != null) {
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.fromDateTime(endTime),
-                      );
-                      if (time != null) {
-                        setDialogState(() {
-                          endTime = DateTime(date.year, date.month, date.day,
-                              time.hour, time.minute);
-                        });
-                      }
+                    if (time != null) {
+                      setDialogState(() {
+                        endTime = DateTime(date.year, date.month, date.day,
+                            time.hour, time.minute);
+                      });
                     }
-                  },
-                ),
-              ],
-            ),
+                  }
+                },
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel")),
-            ElevatedButton(
-              onPressed: () async {
-                final updatedTask = task.copyWith(
-                  title: titleController.text,
-                  description: descController.text,
-                  assignedTo: assignedToId,
-                  branchId: selectedBranchId,
-                  basePriority: priority,
-                  startTime: startTime,
-                  endTime: endTime,
-                  estimatedDurationMinutes: endTime.difference(startTime).inMinutes,
-                );
-                await vm.updateTask(updatedTask);
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text("Update Task"),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              final updatedTask = task.copyWith(
+                title: titleController.text,
+                description: descController.text,
+                assignedTo: assignedToId,
+                branchId: selectedBranchId,
+                basePriority: priority,
+                startTime: startTime,
+                endTime: endTime,
+                estimatedDurationMinutes: endTime.difference(startTime).inMinutes,
+              );
+              await vm.updateTask(updatedTask);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text("Update Task"),
+          ),
+        ],
       ),
-    );
-  }
-
-  Color _getPriorityColor(String priority) {
-    switch (priority) {
-      case 'Critical': return Colors.red;
-      case 'High': return Colors.orange;
-      case 'Medium': return Colors.blue;
-      default: return Colors.green;
-    }
-  }
+    ),
+  );
 }
 
 class _TeamMonitoringScreen extends StatelessWidget {
