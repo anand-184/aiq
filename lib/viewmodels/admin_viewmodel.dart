@@ -2,51 +2,31 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/task_model.dart';
 import '../models/user_model.dart';
+import '../models/branch.dart';
 import '../services/firestore_service.dart';
-import '../services/ai_service.dart';
 
 class AdminViewModel extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
-  final AIService _aiService = AIService();
-  
+
   // These would typically come from an Auth service after login
   String? currentCompanyId;
   String? currentCompanyName;
   String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
   TimeOfDay startHour = const TimeOfDay(hour: 9, minute: 0);
-  TimeOfDay endHour = const TimeOfDay(hour: 6, minute: 0);
+  TimeOfDay endHour = const TimeOfDay(hour: 18, minute: 0);
 
-  List<Map<String, dynamic>> smartRecommendations = [];
-  bool isLoadingRecommendations = false;
-
-  void updateWorkingHours(TimeOfDay start, TimeOfDay end){
+  void updateWorkingHours(TimeOfDay start, TimeOfDay end) async {
     startHour = start;
-    endHour= end;
-    notifyListeners();
-  }
-
-  Future<void> getAIRecommendations({
-    required List<String> requiredSkills,
-    required DateTime startTime,
-    required DateTime endTime,
-  }) async {
-    if (currentCompanyId == null) return;
-    
-    isLoadingRecommendations = true;
+    endHour = end;
     notifyListeners();
 
-    try {
-      smartRecommendations = await _aiService.getSmartRecommendations(
-        companyId: currentCompanyId!,
-        requiredSkills: requiredSkills,
-        startTime: startTime,
-        endTime: endTime,
-      );
-    } catch (e) {
-      debugPrint("AI Error: $e");
-    } finally {
-      isLoadingRecommendations = false;
-      notifyListeners();
+    if (currentCompanyId != null) {
+      await _firestoreService.updateCompanySettings(currentCompanyId!, {
+        'startHour': start.hour,
+        'startMinute': start.minute,
+        'endHour': end.hour,
+        'endMinute': end.minute,
+      });
     }
   }
 
@@ -81,6 +61,30 @@ class AdminViewModel extends ChangeNotifier {
     return _firestoreService.getTasks(currentCompanyId!);
   }
 
+  Stream<List<Branch>> get branchesStream {
+    if (currentCompanyName == null) return const Stream.empty();
+    return _firestoreService.getBranches(currentCompanyName!);
+  }
+
+  // Branch CRUD
+  Future<void> addBranch(String name) async {
+    if (currentCompanyName == null) return;
+    final branch = Branch(
+      companyName: currentCompanyName!,
+      branchName: name,
+    );
+    await _firestoreService.createBranch(branch);
+  }
+
+  Future<void> updateBranch(Branch branch) async {
+    await _firestoreService.updateBranch(branch);
+  }
+
+  Future<void> removeBranch(String branchId) async {
+    await _firestoreService.deleteBranch(branchId);
+  }
+
+  // Task CRUD
   Future<String> addTask({
     required String title,
     required String description,
@@ -90,7 +94,6 @@ class AdminViewModel extends ChangeNotifier {
     required String basePriority,
     required String branchId,
     required String assignedBy,
-    List<String> requiredSkills = const [],
   }) async {
     if (currentCompanyId == null) return "Error: No company context found.";
 
@@ -107,7 +110,6 @@ class AdminViewModel extends ChangeNotifier {
       endTime: endTime,
       estimatedDurationMinutes: endTime.difference(startTime).inMinutes,
       basePriority: basePriority,
-      requiredSkills: requiredSkills,
       createdAt: DateTime.now(),
     );
 
@@ -119,6 +121,10 @@ class AdminViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> updateTask(TaskModel task) async {
+    await _firestoreService.updateTask(task);
+  }
+
   Future<void> updateTaskStatus(TaskModel task, String newStatus) async {
     final updatedTask = task.copyWith(status: newStatus);
     await _firestoreService.updateTask(updatedTask);
@@ -126,5 +132,17 @@ class AdminViewModel extends ChangeNotifier {
 
   Future<void> removeTask(String taskId) async {
     await _firestoreService.deleteTask(taskId);
+  }
+
+  Future<void> removeEmployee(UserModel user) async {
+    await _firestoreService.deleteUser(user.userId);
+  }
+
+  Future<void> updateEmployee(UserModel user) async {
+    await _firestoreService.updateUser(user);
+  }
+
+  Future<void> logout() async {
+    await FirebaseAuth.instance.signOut();
   }
 }

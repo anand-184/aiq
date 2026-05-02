@@ -1,4 +1,5 @@
 import 'package:aiq/screens/adminScreens/admin_dashboard.dart';
+import 'package:aiq/screens/empScreens/emp_homescreen.dart';
 import 'package:aiq/screens/super_admin_screens/super_admin_dashboard.dart';
 import 'package:aiq/services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -191,55 +192,69 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
 
                             if (result == "success") {
-                              final User? user =
-                                  FirebaseAuth.instance.currentUser;
-                              if (user != null) {
-                                // 1. Direct Owner Check (Bypass Firestore)
-                                // Replace with your actual Master Email
-                                if (user.email == "anandita9464@gmail.com") {
-                                  if (mounted) {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              const SuperAdminDashboard()),
-                                    );
-                                  }
-                                  return;
+                              final User? user = FirebaseAuth.instance.currentUser;
+                              if (user == null) {
+                                if (mounted) {
+                                  setState(() => _isLoading = false);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text("Authentication failed: User is null")),
+                                  );
                                 }
+                                return;
+                              }
 
-                                // 2. Regular Tenant/User Check
+                              // 1. Super Admin Check (Direct Bypass)
+                              final normalizedEmail = user.email?.toLowerCase() ?? "";
+                              if (normalizedEmail == "anandita.9464@gmail.com" || 
+                                  normalizedEmail == "anandita9464@gmail.com") {
+                                if (mounted) {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const SuperAdminDashboard()),
+                                  );
+                                }
+                                return;
+                              }
+
+                              // 2. Fetch User Role from Firestore
+                              try {
                                 final userDoc = await FirebaseFirestore.instance
                                     .collection('users')
                                     .doc(user.uid)
                                     .get();
 
-                                if (userDoc.exists) {
-                                  String role = userDoc.data()?['role'] ?? "Employee";
+                                if (!mounted) return;
 
-                                  if (mounted) {
-                                    if (role == "SuperAdmin") {
-                                      Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const SuperAdminDashboard()));
-                                    } else if (role == "Manager") {
-                                      // Redirect to Company Admin Panel
-                                      Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const CompanyAdminDashboard()));
-                                    } else {
-                                      // Employee Panel or Overview
-                                      Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const CompanyAdminDashboard())); // Using Admin Dashboard as placeholder for now
-                                    }
+                                if (userDoc.exists) {
+                                  final data = userDoc.data();
+                                  final String role = data?['role'] ?? "Employee";
+
+                                  if (role == "SuperAdmin") {
+                                    Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const SuperAdminDashboard()));
+                                  } else if (role == "Manager" || role == "Admin") {
+                                    Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const CompanyAdminDashboard()));
+                                  } else {
+                                    Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const EmpHomescreen()));
                                   }
+                                } else {
+                                  // User found in Auth but not in Firestore
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text("Account profile not found. Please register again.")),
+                                  );
+                                  setState(() => _isLoading = false);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("Error fetching profile: $e")),
+                                  );
+                                  setState(() => _isLoading = false);
                                 }
                               }
                             } else {
@@ -247,6 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text(result)),
                                 );
+                                setState(() => _isLoading = false);
                               }
                             }
 

@@ -1,3 +1,4 @@
+import 'package:aiq/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import '../models/company.dart';
 import '../models/payment_model.dart';
@@ -5,6 +6,7 @@ import '../services/firestore_service.dart';
 
 class SuperAdminViewModel extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
 
   // Pricing constants per user in ₹ (Rupees)
   static const double priceBasic = 250.0;
@@ -30,6 +32,7 @@ class SuperAdminViewModel extends ChangeNotifier {
   // Business Logic: Add a new company
   Future<void> addCompany({
     required String name,
+    required String pass,
     required String ownerEmail,
     required String ownerName,
     required String plan,
@@ -38,8 +41,13 @@ class SuperAdminViewModel extends ChangeNotifier {
     String? phoneNumber,
   }) async {
     final String companyId = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    // Hash the password for storage
+    final String hashedPass = _authService.hashPassword(pass);
+
     final newCompany = Company(
       companyId: companyId,
+      companyPass: hashedPass,
       name: name,
       ownerEmail: ownerEmail,
       ownerName: ownerName,
@@ -53,9 +61,22 @@ class SuperAdminViewModel extends ChangeNotifier {
     );
 
     try {
+      // 1. Create Company entry in Firestore
       await _firestoreService.createCompany(newCompany);
+
+      // 2. Create Admin Account in Firebase Auth and Firestore Users collection
+      // This helper handles both and prevents Super Admin logout
+      await _authService.registerAdminInBackground(
+        email: ownerEmail,
+        password: pass, // Raw password needed for Firebase Auth creation
+        name: ownerName,
+        companyId: companyId,
+        companyName: name,
+      );
+
     } catch (e) {
-      debugPrint("Error adding company: $e");
+      debugPrint("Error in addCompany: $e");
+      rethrow;
     }
   }
 

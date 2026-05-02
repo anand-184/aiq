@@ -1,11 +1,64 @@
+import 'dart:convert';
 import 'package:aiq/models/user_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 class AuthService {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore fireStore = FirebaseFirestore.instance;
+
+  String hashPassword(String password) {
+    var bytes = utf8.encode(password);
+    var digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  /// Registers a company admin without signing out the Super Admin.
+  Future<String?> registerAdminInBackground({
+    required String email,
+    required String password,
+    required String name,
+    required String companyId,
+    required String companyName,
+  }) async {
+    FirebaseApp tempApp = await Firebase.initializeApp(
+      name: 'TempOnboardingApp',
+      options: Firebase.app().options,
+    );
+
+    try {
+      UserCredential userCredential = await FirebaseAuth.instanceFor(app: tempApp)
+          .createUserWithEmailAndPassword(email: email, password: password);
+      
+      String uid = userCredential.user!.uid;
+
+      UserModel adminModel = UserModel(
+        userId: uid,
+        password: hashPassword(password),
+        companyId: companyId,
+        companyName: companyName,
+        branchId: "Main",
+        empId: "ADMIN-$companyId",
+        name: name,
+        email: email,
+        role: "Manager",
+        maxCapacityHoursPerWeek: 40,
+        createdAt: DateTime.now(),
+        currentWorkloadPercentage: 0.0,
+      );
+
+      await fireStore.collection("users").doc(uid).set(adminModel.toJson());
+      await tempApp.delete();
+      return uid;
+    } catch (e) {
+      debugPrint("Error creating admin account: $e");
+      await tempApp.delete();
+      rethrow;
+    }
+  }
 
   Future<void> registerUser({
     required String email,
@@ -23,9 +76,11 @@ class AuthService {
       UserCredential userCredential = await firebaseAuth
           .createUserWithEmailAndPassword(email: email, password: password);
       User? user = userCredential.user;
+      
       if (user != null) {
         UserModel userModel = UserModel(
             userId: user.uid,
+            password: hashPassword(password),
             companyId: companyId,
             companyName: companyName,
             branchId: branchId,

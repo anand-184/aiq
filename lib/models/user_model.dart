@@ -3,6 +3,7 @@ import 'converters.dart';
 
 class UserModel {
   final String userId;
+  final String password;
   final String companyId;
   final String companyName;
   final String branchId;
@@ -18,6 +19,7 @@ class UserModel {
 
   UserModel({
     required this.userId,
+    required this.password,
     required this.companyId,
     required this.companyName,
     required this.branchId,
@@ -35,6 +37,7 @@ class UserModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       userId: json['userId'] as String? ?? '',
+      password: json['password'] as String? ?? '',
       companyId: json['companyId'] as String? ?? '',
       companyName: json['companyName'] as String? ?? '',
       branchId: json['branchId'] as String? ?? '',
@@ -85,6 +88,7 @@ class UserModel {
   }) {
     return UserModel(
       userId: userId ?? this.userId,
+      password: password?? this.password,
       companyId: companyId ?? this.companyId,
       companyName: companyName ?? this.companyName,
       branchId: branchId ?? this.branchId,

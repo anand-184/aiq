@@ -1,3 +1,6 @@
+import 'package:aiq/screens/login_screen.dart';
+import 'package:aiq/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -23,6 +26,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   final TextEditingController maxUsersController = TextEditingController();
   final TextEditingController industryController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController passController = TextEditingController();
   String selectedPlan = 'Basic';
 
   final List<String> _titles = [
@@ -166,13 +170,40 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       selected: isSelected,
       onTap: () {
         if (isLogout) {
-          Navigator.pop(context);
+          showConfirmDialog("Confirmation ","Are you sure to Logout?" );
         } else {
           setState(() => _selectedIndex = index);
           Navigator.pop(context);
         }
       },
     );
+  }
+  void showConfirmDialog(String title,String content){
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showDialog(context: context, builder: (context)=>
+        StatefulBuilder(builder: (context,setDialogState)=>AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(onPressed: (){
+              Navigator.pop(context);
+            }, child: Text("Cancel")),
+            ElevatedButton(onPressed: (){
+              FirebaseAuth.instance.signOut();
+              Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (context)=>LoginScreen()));
+
+            }, child:Text(
+              "LogOut"
+            ))
+
+
+          ],
+
+        )));
+
+
   }
 
   static InputDecoration getInputDecoration(
@@ -199,6 +230,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
   void _showAddCompanyDialog(BuildContext context, SuperAdminViewModel vm) {
     nameController.clear();
+    passController.clear();
     ownerNameController.clear();
     emailController.clear();
     industryController.clear();
@@ -254,6 +286,15 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
+                      controller: passController,
+                      decoration: getInputDecoration(
+                          "Set Password", Icons.password, colorScheme),
+                      keyboardType: TextInputType.visiblePassword,
+                      validator: (v) =>
+                      v!.contains(RegExp(r'[!@#%^&*(),.?":{}|<>]')) ? null : "Password must have atleast one special character",
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
                       controller: phoneController,
                       decoration: getInputDecoration(
                           "Contact Number", Icons.phone, colorScheme),
@@ -297,22 +338,37 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
-              onPressed: () {
+               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
-                  vm.addCompany(
-                    name: nameController.text,
-                    ownerEmail: emailController.text,
-                    ownerName: ownerNameController.text,
-                    plan: selectedPlan,
-                    maxUsers: int.parse(maxUsersController.text),
-                    industry: industryController.text.isEmpty
-                        ? null
-                        : industryController.text,
-                    phoneNumber: phoneController.text.isEmpty
-                        ? null
-                        : phoneController.text,
-                  );
-                  Navigator.pop(context);
+                  try {
+                    await vm.addCompany(
+                      name: nameController.text,
+                      pass: passController.text,
+                      ownerEmail: emailController.text,
+                      ownerName: ownerNameController.text,
+                      plan: selectedPlan,
+                      maxUsers: int.parse(maxUsersController.text),
+                      industry: industryController.text.isEmpty
+                          ? null
+                          : industryController.text,
+                      phoneNumber: phoneController.text.isEmpty
+                          ? null
+                          : phoneController.text,
+                    );
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text("Company and Admin account created!")),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Error: $e")),
+                      );
+                    }
+                  }
                 }
               },
               child: const Text("Add Company"),
@@ -459,6 +515,7 @@ class CompaniesScreen extends StatelessWidget {
     final maxUsersController = TextEditingController(text: company.maxUsers.toString());
     final industryController = TextEditingController(text: company.industry ?? "");
     final phoneController = TextEditingController(text: company.phoneNumber ?? "");
+    final passController = TextEditingController(text: company.companyPass);
     String selectedPlan = company.plan;
     bool isActive = company.isActive;
     bool isTrackingEnabled = company.settings['tracking_enabled'] ?? true;
@@ -515,6 +572,16 @@ class CompaniesScreen extends StatelessWidget {
                       validator: (v) =>
                           v!.contains('@') ? null : "Invalid Email",
                     ),
+                    TextFormField(
+                      controller: passController,
+                      decoration: _SuperAdminDashboardState.getInputDecoration(
+                          "Set Password ", Icons.password, colorScheme),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) =>
+                      v!.contains(RegExp(r'[!@#%^&*(),.?":{}|<>]')) ? null : "Password should have a special character ",
+                    ),
+
+
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: phoneController,
@@ -571,6 +638,7 @@ class CompaniesScreen extends StatelessWidget {
                 if (formKey.currentState!.validate()) {
                   final updatedCompany = company.copyWith(
                     name: nameController.text,
+                    companyPass: passController.text,
                     ownerEmail: emailController.text,
                     ownerName: ownerNameController.text,
                     plan: selectedPlan,

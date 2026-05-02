@@ -3,6 +3,7 @@ import 'converters.dart';
 
 class Company {
   final String companyId;
+  final String companyPass;
   final String name;
   final String ownerEmail;
   final String ownerName;
@@ -17,6 +18,7 @@ class Company {
 
   Company({
     required this.companyId,
+    required this.companyPass,
     required this.name,
     required this.ownerEmail,
     required this.ownerName,
@@ -33,6 +35,7 @@ class Company {
   factory Company.fromJson(Map<String, dynamic> json) {
     return Company(
       companyId: json['companyId'] as String? ?? '',
+      companyPass: json['companyPass'] as String? ?? "",
       name: json['name'] as String? ?? '',
       ownerEmail: json['ownerEmail'] as String? ?? '',
       ownerName: json['ownerName'] as String? ?? '',
@@ -50,6 +53,7 @@ class Company {
   Map<String, dynamic> toJson() {
     return {
       'companyId': companyId,
+      'companyPass':companyPass,
       'name': name,
       'ownerEmail': ownerEmail,
       'ownerName': ownerName,
@@ -66,6 +70,7 @@ class Company {
 
   Company copyWith({
     String? companyId,
+    String? companyPass,
     String? name,
     String? ownerEmail,
     String? ownerName,
@@ -80,6 +85,7 @@ class Company {
   }) {
     return Company(
       companyId: companyId ?? this.companyId,
+      companyPass: companyPass?? this.companyPass,
       name: name ?? this.name,
       ownerEmail: ownerEmail ?? this.ownerEmail,
       ownerName: ownerName ?? this.ownerName,
