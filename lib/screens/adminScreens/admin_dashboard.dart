@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:aiq/services/ai_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -227,6 +228,7 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
   void _showAddTaskDialog(BuildContext context, AdminViewModel vm) {
     final titleController = TextEditingController();
     final descController = TextEditingController();
+    final skillsController = TextEditingController();
     String priority = "Medium";
     String? assignedToId;
     String? selectedBranchId;
@@ -249,6 +251,12 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                 TextField(
                   controller: descController,
                   decoration: const InputDecoration(labelText: "Description"),
+                ),
+                TextField(
+                  controller: skillsController,
+                  decoration: const InputDecoration(
+                      labelText: "Required Skills (comma separated)",
+                      hintText: "Flutter, Firebase, AI"),
                 ),
                 const SizedBox(height: 16),
                 StreamBuilder<List<Branch>>(
@@ -305,19 +313,63 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
 
                     if (assignedToId != null && !seenIds.contains(assignedToId)) {
                       items.add(DropdownMenuItem(
-                          value: assignedToId, child: Text("ID: $assignedToId")));
+                          value: assignedToId,
+                          child: Text("ID: $assignedToId")));
                     }
 
-                    return DropdownButtonFormField<String>(
-                      value: assignedToId,
-                      hint: const Text("Assign To Employee"),
-                      items: items,
-                      onChanged: (val) =>
-                          setDialogState(() => assignedToId = val),
-                      decoration: const InputDecoration(labelText: "Assignee"),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text("Assignee",
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            TextButton.icon(
+                              icon: const Icon(Icons.auto_awesome, size: 18),
+                              onPressed: () async {
+                                final ai_service = AiService();
+                                final suggestions =
+                                    await ai_service.getSmartSuggestions(
+                                        requiredSkills: skillsController.text
+                                            .split(",")
+                                            .map((s) => s.trim())
+                                            .where((s) => s.isNotEmpty)
+                                            .toList(),
+                                        priority: priority,
+                                        deadline: endTime,
+                                        employees: vm.currentEmployees);
+                                if (suggestions.isNotEmpty && context.mounted) {
+                                  _showAISuggestionsDialog(
+                                      context, suggestions, (selectedId) {
+                                    setDialogState(() {
+                                      assignedToId = selectedId;
+                                    });
+                                  });
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text("No suggestions found")));
+                                }
+                              },
+                              label: const Text("AI Suggest"),
+                            )
+                          ],
+                        ),
+                        DropdownButtonFormField<String>(
+                          value: assignedToId,
+                          hint: const Text("Assign To Employee"),
+                          items: items,
+                          onChanged: (val) =>
+                              setDialogState(() => assignedToId = val),
+                          decoration:
+                              const InputDecoration(labelText: "Assignee"),
+                        ),
+                      ],
                     );
                   },
                 ),
+
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: priority,
@@ -396,6 +448,11 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                 final result = await vm.addTask(
                   title: titleController.text,
                   description: descController.text,
+                  requiredSkills: skillsController.text
+                      .split(",")
+                      .map((s) => s.trim())
+                      .where((s) => s.isNotEmpty)
+                      .toList(),
                   assignedTo: assignedToId!,
                   startTime: startTime,
                   endTime: endTime,
@@ -1061,6 +1118,8 @@ Color getPriorityColor(String priority) {
 void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task) {
   final titleController = TextEditingController(text: task.title);
   final descController = TextEditingController(text: task.description);
+  final skillsController =
+      TextEditingController(text: task.requiredSkills.join(", "));
   String priority = task.basePriority;
   String? assignedToId = task.assignedTo;
   String? selectedBranchId = task.branchId;
@@ -1083,6 +1142,11 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
               TextField(
                 controller: descController,
                 decoration: const InputDecoration(labelText: "Description"),
+              ),
+              TextField(
+                controller: skillsController,
+                decoration: const InputDecoration(
+                    labelText: "Required Skills (comma separated)"),
               ),
               const SizedBox(height: 16),
               StreamBuilder<List<Branch>>(
@@ -1145,15 +1209,58 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                         child: Text("Employee: $assignedToId")));
                   }
 
-                  return DropdownButtonFormField<String>(
-                    value: (assignedToId != null && assignedToId!.isNotEmpty)
-                        ? assignedToId
-                        : null,
-                    hint: const Text("Assign To Employee"),
-                    items: items,
-                    onChanged: (val) =>
-                        setDialogState(() => assignedToId = val),
-                    decoration: const InputDecoration(labelText: "Assignee"),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text("Assignee",
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Spacer(),
+                          TextButton.icon(
+                            icon: const Icon(Icons.auto_awesome, size: 18),
+                            onPressed: () async {
+                              final ai_service = AiService();
+                              final suggestions =
+                                  await ai_service.getSmartSuggestions(
+                                      requiredSkills: skillsController.text
+                                          .split(",")
+                                          .map((s) => s.trim())
+                                          .where((s) => s.isNotEmpty)
+                                          .toList(),
+                                      priority: priority,
+                                      deadline: endTime,
+                                      employees: vm.currentEmployees);
+                              if (suggestions.isNotEmpty && context.mounted) {
+                                _showAISuggestionsDialog(
+                                    context, suggestions, (selectedId) {
+                                  setDialogState(() {
+                                    assignedToId = selectedId;
+                                  });
+                                });
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text("No suggestions found")));
+                              }
+                            },
+                            label: const Text("AI Suggest"),
+                          )
+                        ],
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: (assignedToId != null &&
+                                assignedToId!.isNotEmpty)
+                            ? assignedToId
+                            : null,
+                        hint: const Text("Assign To Employee"),
+                        items: items,
+                        onChanged: (val) =>
+                            setDialogState(() => assignedToId = val),
+                        decoration:
+                            const InputDecoration(labelText: "Assignee"),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -1229,6 +1336,11 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
               final updatedTask = task.copyWith(
                 title: titleController.text,
                 description: descController.text,
+                requiredSkills: skillsController.text
+                    .split(",")
+                    .map((s) => s.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toList(),
                 assignedTo: assignedToId,
                 branchId: selectedBranchId,
                 basePriority: priority,
@@ -1377,6 +1489,63 @@ class _TeamMonitoringScreen extends StatelessWidget {
             },
             child: const Text("Remove", style: TextStyle(color: Colors.red)),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showAISuggestionsDialog(BuildContext context,
+      List<Map<String, dynamic>> suggestions, Function(String) onSelect) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.blue),
+            SizedBox(width: 10),
+            Text("AI Smart Suggestions"),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: suggestions.length,
+            itemBuilder: (context, index) {
+              final s = suggestions[index];
+              final score = s['score'] ?? 0.0;
+              final matchLevel = (score / 20).clamp(0, 10).toStringAsFixed(1);
+
+              return Card(
+                child: ListTile(
+                  title: Text(s['name'] ?? "Unknown"),
+                  subtitle: Text(s['reason'] ?? ""),
+                  trailing: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "Match: $matchLevel/10",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.blue),
+                    ),
+                  ),
+                  onTap: () {
+                    onSelect(s['userId']);
+                    Navigator.pop(context);
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close")),
         ],
       ),
     );

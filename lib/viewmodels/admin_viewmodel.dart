@@ -15,6 +15,8 @@ class AdminViewModel extends ChangeNotifier {
   String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
   TimeOfDay startHour = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay endHour = const TimeOfDay(hour: 18, minute: 0);
+  List<UserModel> _lastFetchedEmployees =[];
+  List<UserModel> get currentEmployees => _lastFetchedEmployees;
 
   AdminViewModel() {
     _initializeContext();
@@ -71,7 +73,10 @@ class AdminViewModel extends ChangeNotifier {
   // Streams
   Stream<List<UserModel>> get employeesStream {
     if (currentCompanyId == null) return const Stream.empty();
-    return _firestoreService.getEmployees(currentCompanyId!);
+    return _firestoreService.getEmployees(currentCompanyId!).map((list){
+      _lastFetchedEmployees =list;
+      return list;
+    });
   }
 
   Stream<List<TaskModel>> get tasksStream {
@@ -119,6 +124,7 @@ class AdminViewModel extends ChangeNotifier {
     required String basePriority,
     required String branchId,
     required String assignedBy,
+    List<String> requiredSkills = const [],
   }) async {
     if (currentCompanyId == null) return "Error: No company context found.";
 
@@ -129,6 +135,7 @@ class AdminViewModel extends ChangeNotifier {
       branchId: branchId,
       title: title,
       description: description,
+      requiredSkills: requiredSkills,
       assignedTo: assignedTo,
       assignedBy: assignedBy,
       startTime: startTime,

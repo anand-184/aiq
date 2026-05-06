@@ -1,68 +1,61 @@
 from fastapi import FastAPI, Body
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime,timezone
+from datetime import datetime, timezone
 
-app = FastAPI(title="AIQ Smart Engine")
+app = FastAPI(title="AIQ Smart Scheduler Engine")
 
-#Data models
 class Employee(BaseModel):
-    userId:str
-    name:str
-    skills:List[str]
-    currentWorkloadPercentage:float
-    isAvailable:bool
+    userId: str
+    name: str
+    skills: List[str]
+    currentWorkloadPercentage: float
+    isAvailable: bool
 
-class  taskContext(BaseModel):
-    requiredSkills:List[str]
-    basePriority:str
-    endTime:datetime
-    isBlocking:bool=False
-
-def calculate_priority_score(base_priority:str,deadline:datetime,is_blocking:bool)->float:
-    weights = {"Critical":40,"High":30,"Medium":20,"Low":10}
-    score = weights.get(base_priority,10)  
-
-    now = datetime.now(timezone.utc)
-    hours_left = (deadline-now).total_seconds/3600
-
-    if hours_left<=0 :score+=60  #overdue
-    elif hours_left < 4: score += 50 # Immediate
-    elif hours_left < 24: score += 30 # Today
-    elif hours_left < 72: score += 15 # Soon 
-
-    if is_blocking :score+=10
-    return score
+class TaskContext(BaseModel):
+    requiredSkills: List[str]
+    basePriority: str
+    endTime: datetime
+    isBlocking: bool = False
 
 @app.post("/suggest-best-employee")
-async def suggest_employee(task:taskContext,employees:List[Employee]):
-    ranked_suggestions=[]
+async def suggest_employee(task: TaskContext, employees: List[Employee]):
+    ranked_suggestions = []
 
     for emp in employees:
-        if not emp.isAvailable:continue
+        if not emp.isAvailable: continue
 
-        workload_score = 100-emp.currentWorkloadPercentage
+        # 1. Skill Match (Max 100 points)
+        required = set(s.lower() for s in task.requiredSkills)
+        owned = set(s.lower() for s in emp.skills)
+        match_count = len(required & owned)
+        skill_score = (match_count / len(required) * 100) if required else 100
 
-        match_count = len(set(task.requiredSkills)&set(emp.skills))
-        skill_score = match_count *25
+        # 2. Workload Factor (Max 100 points)
+        # Higher workload = Lower score. 0% load = 100 points, 100% load = 0 points
+        workload_score = 100 - emp.currentWorkloadPercentage
 
-        total_score = workload_score +skill_score
-        ranked_suggestions.append(
-            {
-                "userId":emp.userId,
-                "name":emp.name,
-                "score":total_score,
-                "reason":f"Workload:{emp.currentWorkloadPercentage}%,Matches:{match_count}skill"
-            
-            }
-        )
+        # 3. Urgency Weighting
+        now = datetime.now(timezone.utc)
+        hours_to_deadline = (task.endTime - now).total_seconds() / 3600
+        urgency_multiplier = 1.0
+        if hours_to_deadline < 24: urgency_multiplier = 1.5 # Boost priority for near deadlines
 
-        ranked_suggestions.sort(key=lambda x:x["score"],reverse=True)
-        return ranked_suggestions
-    
-@app.post("/get-task-priority")
-async def get_priority(task:taskContext):
-    score =calculate_priority_score(task.basePriority,task.endTime,task.isBlocking)
-    return {"priorityScore":score}
+        # 4. Final Aggregated Score (Max 200)
+        # You can adjust weights here. Currently 60% skills, 40% workload.
+        final_score = (skill_score * 0.6 + workload_score * 0.4) * urgency_multiplier
+        
+        # Match Level out of 10
+        match_level = (final_score / 20).clamp(0, 10) 
 
+        ranked_suggestions.append({
+            "userId": emp.userId,
+            "name": emp.name,
+            "score": final_score,
+            "matchLevel": round(match_level, 1),
+            "reason": f"{int(skill_score)}% Skill Match | {int(emp.currentWorkloadPercentage)}% Workload"
+        })
 
+    # Sort by highest score
+    ranked_suggestions.sort(key=lambda x: x["score"], reverse=True)
+    return ranked_suggestions
