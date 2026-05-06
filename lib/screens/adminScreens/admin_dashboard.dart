@@ -1493,61 +1493,61 @@ class _TeamMonitoringScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  void _showAISuggestionsDialog(BuildContext context,
-      List<Map<String, dynamic>> suggestions, Function(String) onSelect) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.auto_awesome, color: Colors.blue),
-            SizedBox(width: 10),
-            Text("AI Smart Suggestions"),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: suggestions.length,
-            itemBuilder: (context, index) {
-              final s = suggestions[index];
-              final score = s['score'] ?? 0.0;
-              final matchLevel = (score / 20).clamp(0, 10).toStringAsFixed(1);
-
-              return Card(
-                child: ListTile(
-                  title: Text(s['name'] ?? "Unknown"),
-                  subtitle: Text(s['reason'] ?? ""),
-                  trailing: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      "Match: $matchLevel/10",
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.blue),
-                    ),
-                  ),
-                  onTap: () {
-                    onSelect(s['userId']);
-                    Navigator.pop(context);
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Close")),
+void _showAISuggestionsDialog(BuildContext context,
+    List<Map<String, dynamic>> suggestions, Function(String) onSelect) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.auto_awesome, color: Colors.blue),
+          SizedBox(width: 10),
+          Text("AI Smart Suggestions"),
         ],
       ),
-    );
-  }
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: suggestions.length,
+          itemBuilder: (context, index) {
+            final s = suggestions[index];
+            final score = s['score'] ?? 0.0;
+            final matchLevel = (score / 20).clamp(0, 10).toStringAsFixed(1);
+
+            return Card(
+              child: ListTile(
+                title: Text(s['name'] ?? "Unknown"),
+                subtitle: Text(s['reason'] ?? ""),
+                trailing: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "Match: $matchLevel/10",
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.blue),
+                  ),
+                ),
+                onTap: () {
+                  onSelect(s['userId']);
+                  Navigator.pop(context);
+                },
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close")),
+      ],
+    ),
+  );
 }
