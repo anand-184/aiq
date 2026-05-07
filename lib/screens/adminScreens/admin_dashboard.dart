@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:aiq/services/ai_service.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -1368,6 +1369,7 @@ class _TeamMonitoringScreen extends StatelessWidget {
     return StreamBuilder<List<UserModel>>(
       stream: viewModel.employeesStream,
       builder: (context, snapshot) {
+
         if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
         if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No employees found. Invite them in Settings."));
         
@@ -1381,7 +1383,9 @@ class _TeamMonitoringScreen extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                onTap: () => _showEditMemberDialog(context, viewModel, emp),
+                onTap: (){
+                  Navigator.push(context,MaterialPageRoute(builder: (context)=>EmployeeAnalyticsScreen(employee: emp)));
+                },
                 leading: CircleAvatar(
                   backgroundColor:
                       Theme.of(context).colorScheme.secondaryContainer,
@@ -1410,6 +1414,7 @@ class _TeamMonitoringScreen extends StatelessWidget {
                       icon: const Icon(Icons.person_remove_outlined, color: Colors.red),
                       onPressed: () => _confirmRemoveEmployee(context, viewModel, emp),
                     ),
+                    IconButton(onPressed: ()=>_showEditMemberDialog(context, viewModel, emp), icon: const Icon(Icons.edit,color: Colors.white,))
                   ],
                 ),
               ),
@@ -1494,6 +1499,124 @@ class _TeamMonitoringScreen extends StatelessWidget {
     );
   }
 }
+
+class EmployeeAnalyticsScreen extends StatelessWidget{
+  final UserModel employee;
+  const EmployeeAnalyticsScreen({super.key,required this.employee});
+  @override
+  Widget build(BuildContext context){
+    final vm = Provider.of<AdminViewModel>(context);
+    return Scaffold(
+      appBar:  AppBar(title: Text("${employee.name}'s Analytics"),),
+      body: StreamBuilder<List<TaskModel>>(stream: vm.tasksStream, builder: (context,snapshot){
+        if(!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        
+        final stats = vm.calculateEmployeeStats(employee.userId, snapshot.data!);
+        
+        if (stats['total'] == 0) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.analytics_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text("No tasks assigned to this member yet.", 
+                  style: TextStyle(color: Colors.grey, fontSize: 16)),
+              ],
+            ),
+          );
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              _buildStatCards(stats),
+              const SizedBox(height: 30),
+              const Text("Task Distribution", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              _buildPieChart(stats),
+              const SizedBox(height: 30),
+              _buildTaskList(stats['tasks']),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+}
+
+Widget _buildStatCards(Map<String, dynamic> stats) {
+  return Row(
+    children: [
+      _statCard("Completion", "${stats['completionRate'].toStringAsFixed(1)}%", Colors.green),
+      const SizedBox(width: 12),
+      _statCard("Total Tasks", "${stats['total']}", Colors.blue),
+    ],
+  );
+}
+
+Widget _statCard(String label, String value, Color color) {
+  return Expanded(
+    child: Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+          Text(label, style: const TextStyle(color: Colors.grey)),
+        ],
+      ),
+    ),
+  );
+}
+Widget _buildPieChart(Map<String, dynamic> stats) {
+  final double completed = (stats['completed'] ?? 0).toDouble();
+  final double inProgress = (stats['inProgress'] ?? 0).toDouble();
+  final double pending = (stats['pending'] ?? 0).toDouble();
+
+  if (completed == 0 && inProgress == 0 && pending == 0) {
+    return const SizedBox(
+      height: 200,
+      child: Center(child: Text("No task data for chart")),
+    );
+  }
+
+  return SizedBox(
+    height: 200,
+    child: PieChart(
+      PieChartData(
+        sections: [
+          if (completed > 0)
+            PieChartSectionData(value: completed, color: Colors.green, title: 'Done'),
+          if (inProgress > 0)
+            PieChartSectionData(value: inProgress, color: Colors.orange, title: 'Doing'),
+          if (pending > 0)
+            PieChartSectionData(value: pending, color: Colors.red, title: 'To-Do'),
+        ],
+      ),
+    ),
+  );
+}
+Widget _buildTaskList(List<TaskModel> tasks) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text("Detailed Log", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 10),
+      ...tasks.map((t) => ListTile(
+        leading: const Icon(Icons.circle, size: 12),
+        title: Text(t.title),
+        trailing: Text(t.status, style: const TextStyle(fontWeight: FontWeight.bold)),
+      )).toList(),
+    ],
+  );
+}
+
+
 
 void _showAISuggestionsDialog(BuildContext context,
     List<Map<String, dynamic>> suggestions, Function(String) onSelect) {

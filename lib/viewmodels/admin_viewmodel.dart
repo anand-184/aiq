@@ -204,6 +204,25 @@ class AdminViewModel extends ChangeNotifier {
     }
   }
 
+  Map<String, dynamic> calculateEmployeeStats(String userId, List<TaskModel> allTasks) {
+    final userTasks = allTasks.where((t) => t.assignedTo == userId).toList();
+
+    int completed = userTasks.where((t) => t.status == 'Completed').length;
+    int inProgress = userTasks.where((t) => t.status == 'In Progress').length;
+    int pending = userTasks.where((t) => t.status == 'Pending').length;
+
+    double completionRate = userTasks.isEmpty ? 0.0 : (completed / userTasks.length) * 100;
+
+    return {
+      'total': userTasks.length,
+      'completed': completed,
+      'inProgress': inProgress,
+      'pending': pending,
+      'completionRate': completionRate,
+      'tasks': userTasks,
+    };
+  }
+
   Future<void> logout() async {
     await FirebaseAuth.instance.signOut();
   }
