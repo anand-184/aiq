@@ -1,6 +1,7 @@
 import 'package:aiq/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import '../models/company.dart';
+import '../models/feedback_model.dart';
 import '../models/payment_model.dart';
 import '../services/firestore_service.dart';
 
@@ -19,6 +20,7 @@ class SuperAdminViewModel extends ChangeNotifier {
   // Streams
   Stream<List<Company>> get companiesStream => _firestoreService.getCompanies();
   Stream<List<PaymentRecord>> get paymentsStream => _firestoreService.getPayments();
+  Stream<List<FeedbackModel>> get feedbackStream => _firestoreService.getFeedback();
 
   // Business Logic: Remove a company
   Future<void> removeCompany(String companyId) async {
@@ -88,6 +90,10 @@ class SuperAdminViewModel extends ChangeNotifier {
     } catch (e) {
       debugPrint("Error updating company: $e");
     }
+  }
+
+  Future<void> updateFeedbackStatus(String feedbackId, String status) async {
+    await _firestoreService.updateFeedbackStatus(feedbackId, status);
   }
 
   // Revenue Calculation Helpers

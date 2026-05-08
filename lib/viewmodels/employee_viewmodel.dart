@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../models/feedback_model.dart';
 import '../models/performance_metric.dart';
 import '../models/task_model.dart';
 import '../models/user_model.dart';
@@ -78,6 +79,45 @@ class EmployeeViewModel extends ChangeNotifier {
     await _firestoreService.updateTask(updatedTask);
   }
 
+  Future<void> submitTask({
+    required TaskModel task,
+    required String note,
+    required String link,
+  }) async {
+    final submittedTask = task.copyWith(
+      status: "Submitted",
+      submissionNote: note,
+      submissionLink: link,
+      submittedAt: DateTime.now(),
+    );
+    await _firestoreService.updateTask(submittedTask);
+  }
+
+  Stream<List<FeedbackModel>> feedbackStream(String companyId) {
+    return _firestoreService.getFeedback(companyId: companyId);
+  }
+
+  Future<void> submitFeedback({
+    required UserModel user,
+    required String category,
+    required String message,
+    required int rating,
+  }) async {
+    final feedback = FeedbackModel(
+      feedbackId: "FDB-${DateTime.now().millisecondsSinceEpoch}",
+      companyId: user.companyId,
+      companyName: user.companyName,
+      userId: user.userId,
+      userName: user.name,
+      role: user.role,
+      category: category,
+      message: message,
+      rating: rating,
+      createdAt: DateTime.now(),
+    );
+    await _firestoreService.createFeedback(feedback);
+  }
+
   Future<void> updateProfile(UserModel user) async {
     await _firestoreService.updateUser(user);
   }
@@ -96,6 +136,10 @@ class EmployeeViewModel extends ChangeNotifier {
                     typedCharacters *
                     100)
                 .toDouble();
+    final trackedMinutes = focusMinutes > 0 ? focusMinutes : appScreenMinutes;
+    final keystrokesPerHour = trackedMinutes <= 0
+        ? 0.0
+        : typedCharacters / (trackedMinutes / 60.0);
     final metricId =
         "PERF-${user.userId}-${DateTime.now().millisecondsSinceEpoch}";
     final metric = PerformanceMetric(
@@ -108,6 +152,7 @@ class EmployeeViewModel extends ChangeNotifier {
       typedCharacters: typedCharacters,
       correctionCount: correctionCount,
       taskSwitches: taskSwitches,
+      keystrokesPerHour: keystrokesPerHour,
       typingActivityScore: activityScore,
       employeeConsented: true,
     );

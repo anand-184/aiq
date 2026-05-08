@@ -37,6 +37,7 @@ class PerformanceSignal(BaseModel):
     averageFocusMinutes: float = 0
     appScreenMinutes: float = 0
     typingActivityScore: float = 0
+    keystrokesPerHour: float = 0
     workloadPercentage: float = 0
 
 @app.get("/")
@@ -157,10 +158,12 @@ async def performance_insights(signals: List[PerformanceSignal]):
         completion_rate = (signal.completedTasks / total_tasks * 100) if total_tasks else 0
         focus_score = min(100, max(0, signal.averageFocusMinutes / 120 * 100))
         activity_score = min(100, max(0, signal.typingActivityScore))
+        keystroke_score = min(100, max(0, signal.keystrokesPerHour / 1800 * 100))
         balanced_score = round(
             completion_rate * 0.55
             + focus_score * 0.25
-            + activity_score * 0.10
+            + activity_score * 0.07
+            + keystroke_score * 0.03
             + max(0, 100 - signal.workloadPercentage) * 0.10,
             1,
         )
@@ -176,6 +179,7 @@ async def performance_insights(signals: List[PerformanceSignal]):
             "employeeName": signal.employeeName,
             "efficiencyScore": balanced_score,
             "completionRate": round(completion_rate, 1),
+            "keystrokesPerHour": round(signal.keystrokesPerHour, 1),
             "risk": risk,
             "recommendation": "Rebalance workload or pair with a skilled teammate." if risk != "Healthy" else "Good candidate for matching skill-based tasks.",
         })

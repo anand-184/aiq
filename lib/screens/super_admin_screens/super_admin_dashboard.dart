@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../models/company.dart';
+import '../../models/feedback_model.dart';
 import '../../models/payment_model.dart';
 import '../../viewmodels/super_admin_viewmodel.dart';
 import '../../services/analytics_service.dart';
@@ -34,6 +35,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     "Global Overview",
     "Companies",
     "Revenue Analytics",
+    "Feedbacks",
     "Profile",
     "AI Analytics"
   ];
@@ -77,8 +79,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   _buildNavTile(context, Icons.dashboard, "Dashboard", 0),
                   _buildNavTile(context, Icons.business, "Companies", 1),
                   _buildNavTile(context, Icons.monetization_on, "Revenue", 2),
-                  _buildNavTile(context, Icons.person, "Profile", 3),
-                  _buildNavTile(context, Icons.auto_awesome, "AI Analytics", 4),
+                  _buildNavTile(context, Icons.feedback, "Feedbacks", 3),
+                  _buildNavTile(context, Icons.person, "Profile", 4),
+                  _buildNavTile(context, Icons.auto_awesome, "AI Analytics", 5),
                   const Divider(),
                   _buildNavTile(context, Icons.logout, "Logout", -1,
                       isLogout: true),
@@ -95,6 +98,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           _OverviewScreen(),
           CompaniesScreen(),
           RevenueScreen(),
+          _SuperAdminFeedbackScreen(),
           SuperAdminProfileScreen(),
           _SuperAdminAiAnalyticsScreen(),
         ],
@@ -829,8 +833,75 @@ class RevenueScreen extends StatelessWidget {
 class SuperAdminProfileScreen extends StatelessWidget {
   const SuperAdminProfileScreen({super.key});
   @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text("Super Admin Profile Screen"));
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [
+          ListTile(
+            leading: Icon(Icons.admin_panel_settings),
+            title: Text("Super Admin"),
+            subtitle: Text("Platform owner and company lifecycle manager"),
+          ),
+          ListTile(
+            leading: Icon(Icons.security),
+            title: Text("Controls"),
+            subtitle: Text("Companies, billing, feedback, AI analytics"),
+          ),
+        ],
+      );
+}
+
+class _SuperAdminFeedbackScreen extends StatelessWidget {
+  const _SuperAdminFeedbackScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<SuperAdminViewModel>(context);
+
+    return StreamBuilder<List<FeedbackModel>>(
+      stream: viewModel.feedbackStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final feedback = snapshot.data ?? [];
+        if (feedback.isEmpty) {
+          return const Center(child: Text("No feedback submitted yet."));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: feedback.length,
+          itemBuilder: (context, index) {
+            final item = feedback[index];
+            const statuses = ["Open", "In Review", "Resolved"];
+            final selectedStatus =
+                statuses.contains(item.status) ? item.status : statuses.first;
+            return Card(
+              child: ListTile(
+                leading: const Icon(Icons.feedback_outlined),
+                title: Text("${item.companyName} • ${item.category}"),
+                subtitle: Text("${item.userName} (${item.role}): ${item.message}"),
+                trailing: DropdownButton<String>(
+                  value: selectedStatus,
+                  underline: const SizedBox(),
+                  items: statuses
+                      .map((status) => DropdownMenuItem(
+                            value: status,
+                            child: Text(status),
+                          ))
+                      .toList(),
+                  onChanged: (status) {
+                    if (status != null) {
+                      viewModel.updateFeedbackStatus(item.feedbackId, status);
+                    }
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 class _SuperAdminAiAnalyticsScreen extends StatelessWidget {
@@ -846,42 +917,57 @@ class _SuperAdminAiAnalyticsScreen extends StatelessWidget {
         return StreamBuilder<List<PaymentRecord>>(
           stream: viewModel.paymentsStream,
           builder: (context, paymentSnapshot) {
-            final companies = companySnapshot.data ?? [];
-            final payments = paymentSnapshot.data ?? [];
-            final projectedRevenue =
-                viewModel.calculateProjectedMonthlyRevenue(companies);
-            final actualRevenue =
-                viewModel.calculateTotalActualRevenue(payments);
-            final docs = <Map<String, dynamic>>[
-              {
-                "title": "Platform Snapshot",
-                "content":
-                    "Companies ${companies.length}, projected monthly revenue ${projectedRevenue.toStringAsFixed(0)}, actual revenue ${actualRevenue.toStringAsFixed(0)}.",
-                "metadata": {"type": "platform"}
-              },
-              ...companies.map((company) => {
-                    "title": "Company ${company.name}",
+            return StreamBuilder<List<FeedbackModel>>(
+              stream: viewModel.feedbackStream,
+              builder: (context, feedbackSnapshot) {
+                final companies = companySnapshot.data ?? [];
+                final payments = paymentSnapshot.data ?? [];
+                final feedback = feedbackSnapshot.data ?? [];
+                final projectedRevenue =
+                    viewModel.calculateProjectedMonthlyRevenue(companies);
+                final actualRevenue =
+                    viewModel.calculateTotalActualRevenue(payments);
+                final docs = <Map<String, dynamic>>[
+                  {
+                    "title": "Platform Snapshot",
                     "content":
-                        "Plan ${company.plan}, max users ${company.maxUsers}, active ${company.isActive}, owner ${company.ownerName}, industry ${company.industry ?? 'unknown'}.",
-                    "metadata": {
-                      "type": "company",
-                      "companyId": company.companyId
-                    }
-                  }),
-              ...payments.take(30).map((payment) => {
-                    "title": "Payment ${payment.companyName}",
-                    "content":
-                        "Amount ${payment.amount}, status ${payment.status}, plan ${payment.plan}, timestamp ${payment.timestamp}.",
-                    "metadata": {
-                      "type": "payment",
-                      "paymentId": payment.paymentId
-                    }
-                  }),
-            ];
+                        "Companies ${companies.length}, projected monthly revenue ${projectedRevenue.toStringAsFixed(0)}, actual revenue ${actualRevenue.toStringAsFixed(0)}, feedback items ${feedback.length}.",
+                    "metadata": {"type": "platform"}
+                  },
+                  ...companies.map((company) => {
+                        "title": "Company ${company.name}",
+                        "content":
+                            "Plan ${company.plan}, max users ${company.maxUsers}, active ${company.isActive}, owner ${company.ownerName}, industry ${company.industry ?? 'unknown'}.",
+                        "metadata": {
+                          "type": "company",
+                          "companyId": company.companyId
+                        }
+                      }),
+                  ...payments.take(30).map((payment) => {
+                        "title": "Payment ${payment.companyName}",
+                        "content":
+                            "Amount ${payment.amount}, status ${payment.status}, plan ${payment.plan}, timestamp ${payment.timestamp}.",
+                        "metadata": {
+                          "type": "payment",
+                          "paymentId": payment.paymentId
+                        }
+                      }),
+                  ...feedback.take(30).map((item) => {
+                        "title": "Feedback ${item.companyName}",
+                        "content":
+                            "${item.category}, rating ${item.rating}/5, status ${item.status}: ${item.message}.",
+                        "metadata": {
+                          "type": "feedback",
+                          "feedbackId": item.feedbackId
+                        }
+                      }),
+                ];
 
-            return AiAnalyticsChatbot(
-              role: "Super Admin",
-              documents: docs,
+                return AiAnalyticsChatbot(
+                  role: "Super Admin",
+                  documents: docs,
+                );
+              },
             );
           },
         );

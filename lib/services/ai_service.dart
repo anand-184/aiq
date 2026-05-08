@@ -111,6 +111,12 @@ class AiService {
                   .map((metric) => metric.typingActivityScore)
                   .reduce((a, b) => a + b) /
               userMetrics.length;
+      final keystrokesPerHour = userMetrics.isEmpty
+          ? 0
+          : userMetrics
+                  .map((metric) => metric.keystrokesPerHour)
+                  .reduce((a, b) => a + b) /
+              userMetrics.length;
 
       return {
         "userId": employee.userId,
@@ -121,6 +127,7 @@ class AiService {
         "averageFocusMinutes": avgFocus,
         "appScreenMinutes": appMinutes,
         "typingActivityScore": typingScore,
+        "keystrokesPerHour": keystrokesPerHour,
         "workloadPercentage": employee.currentWorkloadPercentage,
       };
     }).toList();

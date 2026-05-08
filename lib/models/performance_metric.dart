@@ -12,6 +12,7 @@ class PerformanceMetric {
   final int taskSwitches;
   final int typedCharacters;
   final int correctionCount;
+  final double keystrokesPerHour;
   final double typingActivityScore;
   final bool employeeConsented;
 
@@ -25,6 +26,7 @@ class PerformanceMetric {
     this.taskSwitches = 0,
     this.typedCharacters = 0,
     this.correctionCount = 0,
+    this.keystrokesPerHour = 0,
     this.typingActivityScore = 0,
     this.employeeConsented = false,
   });
@@ -40,6 +42,8 @@ class PerformanceMetric {
       taskSwitches: (json['taskSwitches'] as num?)?.toInt() ?? 0,
       typedCharacters: (json['typedCharacters'] as num?)?.toInt() ?? 0,
       correctionCount: (json['correctionCount'] as num?)?.toInt() ?? 0,
+      keystrokesPerHour:
+          (json['keystrokesPerHour'] as num?)?.toDouble() ?? 0,
       typingActivityScore:
           (json['typingActivityScore'] as num?)?.toDouble() ?? 0,
       employeeConsented: json['employeeConsented'] as bool? ?? false,
@@ -57,6 +61,7 @@ class PerformanceMetric {
       'taskSwitches': taskSwitches,
       'typedCharacters': typedCharacters,
       'correctionCount': correctionCount,
+      'keystrokesPerHour': keystrokesPerHour,
       'typingActivityScore': typingActivityScore,
       'employeeConsented': employeeConsented,
     };

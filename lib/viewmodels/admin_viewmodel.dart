@@ -4,6 +4,7 @@ import '../models/task_model.dart';
 import '../models/user_model.dart';
 import '../models/branch.dart';
 import '../models/performance_metric.dart';
+import '../models/feedback_model.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 
@@ -95,6 +96,11 @@ class AdminViewModel extends ChangeNotifier {
     return _firestoreService.getPerformanceMetrics(currentCompanyId!);
   }
 
+  Stream<List<FeedbackModel>> get feedbackStream {
+    if (currentCompanyId == null) return const Stream.empty();
+    return _firestoreService.getFeedback(companyId: currentCompanyId!);
+  }
+
   // Branch CRUD
   Future<String> addBranch(String name) async {
     if (currentCompanyName == null) {
@@ -166,6 +172,40 @@ class AdminViewModel extends ChangeNotifier {
   Future<void> updateTaskStatus(TaskModel task, String newStatus) async {
     final updatedTask = task.copyWith(status: newStatus);
     await _firestoreService.updateTask(updatedTask);
+  }
+
+  Future<void> reviewTaskSubmission(
+    TaskModel task, {
+    required bool approved,
+    required String feedback,
+  }) async {
+    final reviewedTask = task.copyWith(
+      status: approved ? "Completed" : "Pending",
+      reviewerFeedback: feedback,
+      reviewedAt: DateTime.now(),
+    );
+    await _firestoreService.updateTask(reviewedTask);
+  }
+
+  Future<void> submitFeedback({
+    required UserModel user,
+    required String category,
+    required String message,
+    required int rating,
+  }) async {
+    final feedback = FeedbackModel(
+      feedbackId: "FDB-${DateTime.now().millisecondsSinceEpoch}",
+      companyId: user.companyId,
+      companyName: user.companyName,
+      userId: user.userId,
+      userName: user.name,
+      role: user.role,
+      category: category,
+      message: message,
+      rating: rating,
+      createdAt: DateTime.now(),
+    );
+    await _firestoreService.createFeedback(feedback);
   }
 
   Future<void> removeTask(String taskId) async {

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/company.dart';
+import '../models/feedback_model.dart';
 import '../models/performance_metric.dart';
 import '../models/payment_model.dart';
 import '../models/task_model.dart';
@@ -151,6 +152,32 @@ class FirestoreService {
         .collection('performance_metrics')
         .doc(metric.metricId)
         .set(metric.toJson());
+  }
+
+  Stream<List<FeedbackModel>> getFeedback({String? companyId}) {
+    Query<Map<String, dynamic>> query = _db.collection('feedback');
+    if (companyId != null && companyId.isNotEmpty) {
+      query = query.where('companyId', isEqualTo: companyId);
+    }
+    return query.snapshots().map((snapshot) {
+      final feedback =
+          snapshot.docs.map((doc) => FeedbackModel.fromJson(doc.data())).toList();
+      feedback.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return feedback;
+    });
+  }
+
+  Future<void> createFeedback(FeedbackModel feedback) {
+    return _db
+        .collection('feedback')
+        .doc(feedback.feedbackId)
+        .set(feedback.toJson());
+  }
+
+  Future<void> updateFeedbackStatus(String feedbackId, String status) {
+    return _db.collection('feedback').doc(feedbackId).update({
+      'status': status,
+    });
   }
 
   // --- Scheduling Engine & Priority Logic ---

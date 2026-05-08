@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../login_screen.dart';
 import '../../models/branch.dart';
+import '../../models/feedback_model.dart';
 import '../../models/performance_metric.dart';
 import '../../models/task_model.dart';
 import '../../models/user_model.dart';
@@ -30,6 +31,7 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
     "Branches",
     "Workload Scheduler",
     "AI Analytics",
+    "Feedback",
     "Settings"
   ];
 
@@ -64,7 +66,8 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   _buildNavTile(context, Icons.home_filled, "Branches", 3),
                   _buildNavTile(context, Icons.calendar_month, "Scheduler", 4),
                   _buildNavTile(context, Icons.auto_awesome, "AI Analytics", 5),
-                  _buildNavTile(context, Icons.settings, "Settings", 6)
+                  _buildNavTile(context, Icons.feedback_outlined, "Feedback", 6),
+                  _buildNavTile(context, Icons.settings, "Settings", 7)
                 ],
               ),
             ),
@@ -83,6 +86,7 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
           _ManageBranchesScreen(),
           _WorkloadSchedulerScreen(),
           _CompanyAiAnalyticsScreen(),
+          _CompanyFeedbackScreen(),
           _CompanySettingScreen(),
         ],
       ),
@@ -990,12 +994,16 @@ class _CompanyAiAnalyticsScreen extends StatelessWidget {
         return StreamBuilder<List<UserModel>>(
           stream: viewModel.employeesStream,
           builder: (context, employeeSnapshot) {
-            return StreamBuilder<List<PerformanceMetric>>(
-              stream: viewModel.performanceMetricsStream,
-              builder: (context, metricSnapshot) {
-                final tasks = taskSnapshot.data ?? [];
-                final employees = employeeSnapshot.data ?? [];
-                final metrics = metricSnapshot.data ?? [];
+            return StreamBuilder<List<FeedbackModel>>(
+              stream: viewModel.feedbackStream,
+              builder: (context, feedbackSnapshot) {
+                return StreamBuilder<List<PerformanceMetric>>(
+                  stream: viewModel.performanceMetricsStream,
+                  builder: (context, metricSnapshot) {
+                    final tasks = taskSnapshot.data ?? [];
+                    final employees = employeeSnapshot.data ?? [];
+                    final metrics = metricSnapshot.data ?? [];
+                    final feedback = feedbackSnapshot.data ?? [];
                 final docs = <Map<String, dynamic>>[
                   {
                     "title": "Company Context",
@@ -1018,10 +1026,16 @@ class _CompanyAiAnalyticsScreen extends StatelessWidget {
                         .toList();
                     final focusMinutes = employeeMetrics.fold<int>(
                         0, (sum, metric) => sum + metric.focusMinutes);
+                    final keystrokesPerHour = employeeMetrics.isEmpty
+                        ? 0.0
+                        : employeeMetrics
+                                .map((metric) => metric.keystrokesPerHour)
+                                .reduce((a, b) => a + b) /
+                            employeeMetrics.length;
                     return {
                       "title": "Employee ${employee.name}",
                       "content":
-                          "Role ${employee.role}, workload ${employee.currentWorkloadPercentage.toStringAsFixed(0)}%, completed $completed, pending $pending, app focus minutes $focusMinutes, skills ${employee.skills.join(', ')}.",
+                          "Role ${employee.role}, workload ${employee.currentWorkloadPercentage.toStringAsFixed(0)}%, completed $completed, pending $pending, app focus minutes $focusMinutes, keystrokes per hour ${keystrokesPerHour.toStringAsFixed(0)}, skills ${employee.skills.join(', ')}.",
                       "metadata": {
                         "type": "employee",
                         "userId": employee.userId
@@ -1031,107 +1045,288 @@ class _CompanyAiAnalyticsScreen extends StatelessWidget {
                   ...tasks.take(30).map((task) => {
                         "title": "Task ${task.title}",
                         "content":
-                            "Status ${task.status}, priority ${task.basePriority}, assignedTo ${task.assignedTo}, due ${task.endTime}.",
+                            "Status ${task.status}, priority ${task.basePriority}, assignedTo ${task.assignedTo}, due ${task.endTime}, submission ${task.submissionNote}, reviewer feedback ${task.reviewerFeedback}.",
                         "metadata": {"type": "task", "taskId": task.taskId}
+                      }),
+                  ...feedback.take(20).map((item) => {
+                        "title": "Feedback ${item.category}",
+                        "content":
+                            "${item.userName} rated ${item.rating}/5: ${item.message}. Status ${item.status}.",
+                        "metadata": {
+                          "type": "feedback",
+                          "feedbackId": item.feedbackId
+                        }
                       }),
                 ];
 
-                return Column(
-                  children: [
-                    SizedBox(
-                      height: 190,
-                      child: FutureBuilder<List<Map<String, dynamic>>>(
-                        future: AiService().getPerformanceInsights(
-                          employees: employees,
-                          tasks: tasks,
-                          metrics: metrics,
-                        ),
-                        builder: (context, snapshot) {
-                          final insights = snapshot.data ?? [];
-                          if (insights.isEmpty) {
-                            return const Center(
-                              child: Text(
-                                "Employee efficiency insights will appear after tasks or opted-in app activity are recorded.",
-                              ),
-                            );
-                          }
-                          return ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.all(12),
-                            itemCount: insights.length,
-                            itemBuilder: (context, index) {
-                              final insight = insights[index];
-                              final score =
-                                  (insight["efficiencyScore"] as num?)
-                                          ?.toDouble() ??
-                                      0;
-                              return Container(
-                                width: 260,
-                                margin: const EdgeInsets.only(right: 12),
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surface,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .outline
-                                        .withOpacity(0.15),
+                    return Column(
+                      children: [
+                        SizedBox(
+                          height: 190,
+                          child: FutureBuilder<List<Map<String, dynamic>>>(
+                            future: AiService().getPerformanceInsights(
+                              employees: employees,
+                              tasks: tasks,
+                              metrics: metrics,
+                            ),
+                            builder: (context, snapshot) {
+                              final insights = snapshot.data ?? [];
+                              if (insights.isEmpty) {
+                                return const Center(
+                                  child: Text(
+                                    "Employee efficiency insights will appear after tasks or opted-in app activity are recorded.",
                                   ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      insight["employeeName"]?.toString() ??
-                                          "Employee",
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
+                                );
+                              }
+                              return ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.all(12),
+                                itemCount: insights.length,
+                                itemBuilder: (context, index) {
+                                  final insight = insights[index];
+                                  final score =
+                                      (insight["efficiencyScore"] as num?)
+                                              ?.toDouble() ??
+                                          0;
+                                  return Container(
+                                    width: 260,
+                                    margin: const EdgeInsets.only(right: 12),
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.surface,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .outline
+                                            .withOpacity(0.15),
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      "Efficiency ${score.toStringAsFixed(1)}",
-                                      style: TextStyle(
-                                        fontSize: 22,
-                                        color: score < 45
-                                            ? Colors.orange
-                                            : Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          insight["employeeName"]?.toString() ??
+                                              "Employee",
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          "Efficiency ${score.toStringAsFixed(1)}",
+                                          style: TextStyle(
+                                            fontSize: 22,
+                                            color: score < 45
+                                                ? Colors.orange
+                                                : Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(insight["risk"]?.toString() ??
+                                            "Healthy"),
+                                        Text(
+                                          "Keys/hr ${(insight["keystrokesPerHour"] as num?)?.toStringAsFixed(0) ?? '0'}",
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          insight["recommendation"]?.toString() ??
+                                              "",
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ),
-                                    Text(insight["risk"]?.toString() ??
-                                        "Healthy"),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      insight["recommendation"]?.toString() ??
-                                          "",
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
-                      ),
-                    ),
-                    Expanded(
-                      child: AiAnalyticsChatbot(
-                        role: "Company Admin",
-                        documents: docs,
-                      ),
-                    ),
-                  ],
+                          ),
+                        ),
+                        Expanded(
+                          child: AiAnalyticsChatbot(
+                            role: "Company Admin",
+                            documents: docs,
+                          ),
+                        ),
+                      ],
+                    );
                 );
               },
             );
           },
         );
       },
+    );
+  }
+}
+
+class _CompanyFeedbackScreen extends StatelessWidget {
+  const _CompanyFeedbackScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<AdminViewModel>(context);
+
+    return StreamBuilder<UserModel>(
+      stream: viewModel.AdminProfile,
+      builder: (context, profileSnapshot) {
+        final admin = profileSnapshot.data;
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: _AdminSectionHeader(
+                title: "Feedback",
+                actionLabel: "Send",
+                onAction: admin == null
+                    ? null
+                    : () => _showAdminFeedbackDialog(
+                          context,
+                          viewModel,
+                          admin,
+                        ),
+              ),
+            ),
+            Expanded(
+              child: StreamBuilder<List<FeedbackModel>>(
+                stream: viewModel.feedbackStream,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final feedback = snapshot.data ?? [];
+                  if (feedback.isEmpty) {
+                    return const Center(
+                      child: Text("No feedback from this company yet."),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    itemCount: feedback.length,
+                    itemBuilder: (context, index) {
+                      final item = feedback[index];
+                      return Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.feedback_outlined),
+                          title: Text("${item.category} • ${item.rating}/5"),
+                          subtitle: Text("${item.userName}: ${item.message}"),
+                          trailing: Text(item.status),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAdminFeedbackDialog(
+    BuildContext context,
+    AdminViewModel viewModel,
+    UserModel admin,
+  ) {
+    final messageController = TextEditingController();
+    String category = "Platform";
+    int rating = 4;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text("Send Feedback"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: category,
+                items: ["Platform", "Billing", "Analytics", "Support"]
+                    .map((item) =>
+                        DropdownMenuItem(value: item, child: Text(item)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => category = value);
+                },
+                decoration: const InputDecoration(labelText: "Category"),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                value: rating,
+                items: [1, 2, 3, 4, 5]
+                    .map((item) => DropdownMenuItem(
+                          value: item,
+                          child: Text("$item / 5"),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => rating = value);
+                },
+                decoration: const InputDecoration(labelText: "Rating"),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: messageController,
+                minLines: 3,
+                maxLines: 5,
+                decoration: const InputDecoration(labelText: "Message"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (messageController.text.trim().isEmpty) return;
+                await viewModel.submitFeedback(
+                  user: admin,
+                  category: category,
+                  message: messageController.text.trim(),
+                  rating: rating,
+                );
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text("Send"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminSectionHeader extends StatelessWidget {
+  const _AdminSectionHeader({
+    required this.title,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        if (actionLabel != null)
+          TextButton(onPressed: onAction, child: Text(actionLabel!)),
+      ],
     );
   }
 }
@@ -1434,6 +1629,22 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                 controller: descController,
                 decoration: const InputDecoration(labelText: "Description"),
               ),
+              if (task.submissionNote.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.upload_file_outlined),
+                  title: const Text("Employee Submission"),
+                  subtitle: Text(task.submissionNote),
+                ),
+              ],
+              if (task.submissionLink.isNotEmpty)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.link),
+                  title: const Text("Submission Link"),
+                  subtitle: Text(task.submissionLink),
+                ),
               TextField(
                 controller: skillsController,
                 decoration: const InputDecoration(
@@ -1644,8 +1855,73 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
             },
             child: const Text("Update Task"),
           ),
+          if (task.status == "Submitted")
+            TextButton(
+              onPressed: () => _showReviewSubmissionDialog(
+                context,
+                vm,
+                task,
+                approved: false,
+              ),
+              child: const Text("Request Rework"),
+            ),
+          if (task.status == "Submitted")
+            ElevatedButton.icon(
+              onPressed: () => _showReviewSubmissionDialog(
+                context,
+                vm,
+                task,
+                approved: true,
+              ),
+              icon: const Icon(Icons.check),
+              label: const Text("Approve"),
+            ),
         ],
       ),
+    ),
+  );
+}
+
+void _showReviewSubmissionDialog(
+  BuildContext context,
+  AdminViewModel vm,
+  TaskModel task, {
+  required bool approved,
+}) {
+  final feedbackController = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(approved ? "Approve Submission" : "Request Rework"),
+      content: TextField(
+        controller: feedbackController,
+        minLines: 3,
+        maxLines: 5,
+        decoration: InputDecoration(
+          labelText: approved ? "Approval note" : "Rework feedback",
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            await vm.reviewTaskSubmission(
+              task,
+              approved: approved,
+              feedback: feedbackController.text.trim(),
+            );
+            if (context.mounted) {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            }
+          },
+          child: Text(approved ? "Approve" : "Send"),
+        ),
+      ],
     ),
   );
 }

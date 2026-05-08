@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/task_model.dart';
 import '../../models/user_model.dart';
+import '../../models/feedback_model.dart';
 import '../../services/ai_service.dart';
 import '../../viewmodels/employee_viewmodel.dart';
 import '../login_screen.dart';
@@ -22,6 +23,7 @@ class _EmpHomescreenState extends State<EmpHomescreen> {
     "My Tasks",
     "Schedule",
     "Team Slots",
+    "Feedback",
     "Profile",
   ];
 
@@ -94,6 +96,10 @@ class _EmpHomescreenState extends State<EmpHomescreen> {
                     onStatusChanged: viewModel.updateTaskStatus,
                   ),
                   _EmployeeTeamSlotsTab(
+                    user: user,
+                    viewModel: viewModel,
+                  ),
+                  _EmployeeFeedbackTab(
                     user: user,
                     viewModel: viewModel,
                   ),
@@ -194,7 +200,8 @@ class _EmployeeSidePanel extends StatelessWidget {
                 _panelTile(
                     context, Icons.calendar_month_outlined, "Schedule", 2),
                 _panelTile(context, Icons.groups_outlined, "Team Slots", 3),
-                _panelTile(context, Icons.person_outline, "Profile", 4),
+                _panelTile(context, Icons.feedback_outlined, "Feedback", 4),
+                _panelTile(context, Icons.person_outline, "Profile", 5),
               ],
             ),
           ),
@@ -1028,6 +1035,145 @@ void _showEmployeeAISuggestionsDialog(
   );
 }
 
+class _EmployeeFeedbackTab extends StatelessWidget {
+  const _EmployeeFeedbackTab({
+    required this.user,
+    required this.viewModel,
+  });
+
+  final UserModel user;
+  final EmployeeViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: _SectionHeader(
+            title: "Feedback",
+            actionLabel: "New",
+            onAction: () => _showFeedbackDialog(context),
+          ),
+        ),
+        Expanded(
+          child: StreamBuilder<List<FeedbackModel>>(
+            stream: viewModel.feedbackStream(user.companyId),
+            builder: (context, snapshot) {
+              final feedback = (snapshot.data ?? [])
+                  .where((item) => item.userId == user.userId)
+                  .toList();
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (feedback.isEmpty) {
+                return const _EmptyState(
+                  icon: Icons.feedback_outlined,
+                  title: "No feedback yet",
+                  message: "Share product, workload, or task process feedback.",
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                itemCount: feedback.length,
+                itemBuilder: (context, index) {
+                  final item = feedback[index];
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.feedback_outlined),
+                      title: Text(item.category),
+                      subtitle: Text(item.message),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("${item.rating}/5"),
+                          Text(item.status,
+                              style: const TextStyle(fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showFeedbackDialog(BuildContext context) {
+    final messageController = TextEditingController();
+    String category = "Product";
+    int rating = 4;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text("Send Feedback"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: category,
+                items: ["Product", "Workload", "Task Assignment", "Support"]
+                    .map((item) =>
+                        DropdownMenuItem(value: item, child: Text(item)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => category = value);
+                },
+                decoration: const InputDecoration(labelText: "Category"),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                value: rating,
+                items: [1, 2, 3, 4, 5]
+                    .map((item) => DropdownMenuItem(
+                          value: item,
+                          child: Text("$item / 5"),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => rating = value);
+                },
+                decoration: const InputDecoration(labelText: "Rating"),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: messageController,
+                minLines: 3,
+                maxLines: 5,
+                decoration: const InputDecoration(labelText: "Message"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (messageController.text.trim().isEmpty) return;
+                await viewModel.submitFeedback(
+                  user: user,
+                  category: category,
+                  message: messageController.text.trim(),
+                  rating: rating,
+                );
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text("Send"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EmployeeProfileTab extends StatelessWidget {
   const _EmployeeProfileTab({
     required this.user,
@@ -1120,7 +1266,7 @@ class _EmployeeProfileTab extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          "Only explicit, app-scoped and consented activity snapshots are stored. This does not capture private text or system-wide keystrokes.",
+          "Only explicit, app-scoped and consented activity snapshots are stored. Keystrokes per hour is calculated from counts only; typed text and system-wide keystrokes are not captured.",
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.62),
           ),
@@ -1214,7 +1360,10 @@ class _EmployeeProfileTab extends StatelessWidget {
               TextField(
                 controller: typedController,
                 decoration:
-                    const InputDecoration(labelText: "Typed characters"),
+                    const InputDecoration(
+                  labelText: "App keystroke count",
+                  hintText: "Count only, no typed text",
+                ),
                 keyboardType: TextInputType.number,
               ),
               TextField(
@@ -1496,6 +1645,12 @@ class _TaskCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
+                  if (task.status != "Completed")
+                    TextButton.icon(
+                      onPressed: () => _showSubmitTaskDialog(context),
+                      icon: const Icon(Icons.upload_file, size: 18),
+                      label: const Text("Submit"),
+                    ),
                   _StatusMenu(
                     status: task.status,
                     onChanged: (status) => onStatusChanged(task, status),
@@ -1545,8 +1700,77 @@ class _TaskCard extends StatelessWidget {
                   ? "No specific skills"
                   : task.requiredSkills.join(", "),
             ),
+            if (task.submissionNote.isNotEmpty)
+              _InfoTile(
+                icon: Icons.upload_file_outlined,
+                title: "Submission",
+                value: task.submissionNote,
+              ),
+            if (task.reviewerFeedback.isNotEmpty)
+              _InfoTile(
+                icon: Icons.rate_review_outlined,
+                title: "Reviewer feedback",
+                value: task.reviewerFeedback,
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showSubmitTaskDialog(BuildContext context) {
+    final noteController = TextEditingController(text: task.submissionNote);
+    final linkController = TextEditingController(text: task.submissionLink);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Submit Task"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: noteController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: "Work summary",
+                hintText: "What was completed?",
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: linkController,
+              decoration: const InputDecoration(
+                labelText: "Proof / file link",
+                hintText: "Drive, GitHub, ticket, document link",
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final vm = Provider.of<EmployeeViewModel>(context, listen: false);
+              await vm.submitTask(
+                task: task,
+                note: noteController.text.trim(),
+                link: linkController.text.trim(),
+              );
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Task submitted for review")),
+                );
+              }
+            },
+            child: const Text("Submit"),
+          ),
+        ],
       ),
     );
   }
@@ -1639,7 +1863,12 @@ class _StatusMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const allowedStatuses = ["Pending", "In Progress", "Completed"];
+    const allowedStatuses = [
+      "Pending",
+      "In Progress",
+      "Submitted",
+      "Completed"
+    ];
     final selectedStatus =
         allowedStatuses.contains(status) ? status : allowedStatuses.first;
 
@@ -1650,10 +1879,13 @@ class _StatusMenu extends StatelessWidget {
       items: allowedStatuses.map((value) {
         return DropdownMenuItem<String>(
           value: value,
+          enabled: value != "Completed",
           child: Text(
             value,
             style: TextStyle(
-              color: _statusColor(value),
+              color: value == "Completed"
+                  ? Colors.grey
+                  : _statusColor(value),
               fontWeight: FontWeight.bold,
               fontSize: 12,
             ),
@@ -1924,6 +2156,8 @@ Color _statusColor(String status) {
   switch (status) {
     case "In Progress":
       return Colors.blue;
+    case "Submitted":
+      return Colors.purple;
     case "Completed":
       return Colors.green;
     case "Pending":
