@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/task_model.dart';
 import '../models/user_model.dart';
 import '../models/branch.dart';
+import '../models/performance_metric.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 
@@ -87,6 +88,11 @@ class AdminViewModel extends ChangeNotifier {
   Stream<List<Branch>> get branchesStream {
     if (currentCompanyName == null) return const Stream.empty();
     return _firestoreService.getBranches(currentCompanyName!);
+  }
+
+  Stream<List<PerformanceMetric>> get performanceMetricsStream {
+    if (currentCompanyId == null) return const Stream.empty();
+    return _firestoreService.getPerformanceMetrics(currentCompanyId!);
   }
 
   // Branch CRUD

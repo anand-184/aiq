@@ -28,6 +28,8 @@ class AuthService {
     List<String> skills = const [],
     double maxCapacity = 40.0,
   }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedRole = role.trim().isEmpty ? "Employee" : role.trim();
     String tempAppName = 'TempApp_${DateTime.now().millisecondsSinceEpoch}';
     FirebaseApp tempApp = await Firebase.initializeApp(
       name: tempAppName,
@@ -35,8 +37,12 @@ class AuthService {
     );
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instanceFor(app: tempApp)
-          .createUserWithEmailAndPassword(email: email, password: password);
+      UserCredential userCredential =
+          await FirebaseAuth.instanceFor(app: tempApp)
+              .createUserWithEmailAndPassword(
+        email: normalizedEmail,
+        password: password,
+      );
       
       String uid = userCredential.user!.uid;
 
@@ -46,10 +52,12 @@ class AuthService {
         companyId: companyId,
         companyName: companyName,
         branchId: branchId,
-        empId: role == "Manager" ? "ADMIN-$companyId" : "EMP-${uid.substring(0, 5)}",
-        name: name,
-        email: email,
-        role: role,
+        empId: normalizedRole == "Manager"
+            ? "ADMIN-$companyId"
+            : "EMP-${uid.substring(0, 5)}",
+        name: name.trim(),
+        email: normalizedEmail,
+        role: normalizedRole,
         skills: skills,
         maxCapacityHoursPerWeek: maxCapacity,
         createdAt: DateTime.now(),

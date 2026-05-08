@@ -8,6 +8,7 @@ import '../../models/company.dart';
 import '../../models/payment_model.dart';
 import '../../viewmodels/super_admin_viewmodel.dart';
 import '../../services/analytics_service.dart';
+import '../../widgets/ai_analytics_chatbot.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -33,8 +34,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     "Global Overview",
     "Companies",
     "Revenue Analytics",
-    "Feedbacks",
-    "Profile"
+    "Profile",
+    "AI Analytics"
   ];
 
   @override
@@ -77,7 +78,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   _buildNavTile(context, Icons.business, "Companies", 1),
                   _buildNavTile(context, Icons.monetization_on, "Revenue", 2),
                   _buildNavTile(context, Icons.person, "Profile", 3),
-                  _buildNavTile(context, Icons.feedback, "Feedbacks", 4),
+                  _buildNavTile(context, Icons.auto_awesome, "AI Analytics", 4),
                   const Divider(),
                   _buildNavTile(context, Icons.logout, "Logout", -1,
                       isLogout: true),
@@ -95,6 +96,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           CompaniesScreen(),
           RevenueScreen(),
           SuperAdminProfileScreen(),
+          _SuperAdminAiAnalyticsScreen(),
         ],
       ),
       floatingActionButton: _selectedIndex == 1
@@ -829,6 +831,63 @@ class SuperAdminProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Center(child: Text("Super Admin Profile Screen"));
+}
+
+class _SuperAdminAiAnalyticsScreen extends StatelessWidget {
+  const _SuperAdminAiAnalyticsScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<SuperAdminViewModel>(context);
+
+    return StreamBuilder<List<Company>>(
+      stream: viewModel.companiesStream,
+      builder: (context, companySnapshot) {
+        return StreamBuilder<List<PaymentRecord>>(
+          stream: viewModel.paymentsStream,
+          builder: (context, paymentSnapshot) {
+            final companies = companySnapshot.data ?? [];
+            final payments = paymentSnapshot.data ?? [];
+            final projectedRevenue =
+                viewModel.calculateProjectedMonthlyRevenue(companies);
+            final actualRevenue =
+                viewModel.calculateTotalActualRevenue(payments);
+            final docs = <Map<String, dynamic>>[
+              {
+                "title": "Platform Snapshot",
+                "content":
+                    "Companies ${companies.length}, projected monthly revenue ${projectedRevenue.toStringAsFixed(0)}, actual revenue ${actualRevenue.toStringAsFixed(0)}.",
+                "metadata": {"type": "platform"}
+              },
+              ...companies.map((company) => {
+                    "title": "Company ${company.name}",
+                    "content":
+                        "Plan ${company.plan}, max users ${company.maxUsers}, active ${company.isActive}, owner ${company.ownerName}, industry ${company.industry ?? 'unknown'}.",
+                    "metadata": {
+                      "type": "company",
+                      "companyId": company.companyId
+                    }
+                  }),
+              ...payments.take(30).map((payment) => {
+                    "title": "Payment ${payment.companyName}",
+                    "content":
+                        "Amount ${payment.amount}, status ${payment.status}, plan ${payment.plan}, timestamp ${payment.timestamp}.",
+                    "metadata": {
+                      "type": "payment",
+                      "paymentId": payment.paymentId
+                    }
+                  }),
+            ];
+
+            return AiAnalyticsChatbot(
+              role: "Super Admin",
+              documents: docs,
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 class _OverviewScreen extends StatelessWidget {

@@ -8,9 +8,11 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../login_screen.dart';
 import '../../models/branch.dart';
+import '../../models/performance_metric.dart';
 import '../../models/task_model.dart';
 import '../../models/user_model.dart';
 import '../../viewmodels/admin_viewmodel.dart';
+import '../../widgets/ai_analytics_chatbot.dart';
 
 class CompanyAdminDashboard extends StatefulWidget {
   const CompanyAdminDashboard({super.key});
@@ -27,6 +29,7 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
     "Team Monitoring",
     "Branches",
     "Workload Scheduler",
+    "AI Analytics",
     "Settings"
   ];
 
@@ -60,7 +63,8 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   _buildNavTile(context, Icons.people, "Team", 2),
                   _buildNavTile(context, Icons.home_filled, "Branches", 3),
                   _buildNavTile(context, Icons.calendar_month, "Scheduler", 4),
-                  _buildNavTile(context, Icons.settings, "Settings", 5)
+                  _buildNavTile(context, Icons.auto_awesome, "AI Analytics", 5),
+                  _buildNavTile(context, Icons.settings, "Settings", 6)
                 ],
               ),
             ),
@@ -78,6 +82,7 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
           _TeamMonitoringScreen(),
           _ManageBranchesScreen(),
           _WorkloadSchedulerScreen(),
+          _CompanyAiAnalyticsScreen(),
           _CompanySettingScreen(),
         ],
       ),
@@ -96,6 +101,7 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
   }
 
   void _showAddMemberDialog(BuildContext context, AdminViewModel vm) {
+    final memberFormKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
@@ -109,75 +115,101 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
         builder: (context, setDialogState) => AlertDialog(
           title: const Text("Add Team Member"),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: "Full Name"),
-                ),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(labelText: "Email"),
-                ),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(labelText: "Initial Password"),
-                  obscureText: true,
-                ),
-                const SizedBox(height: 16),
-                StreamBuilder<List<Branch>>(
-                  stream: vm.branchesStream,
-                  builder: (context, snapshot) {
-                    final branches = snapshot.data ?? [];
-                    final items = <DropdownMenuItem<String>>[];
-                    final seenIds = <String>{};
-
-                    for (var b in branches) {
-                      final id = b.branchId ?? "";
-                      if (id.isNotEmpty && seenIds.add(id)) {
-                        items.add(DropdownMenuItem(
-                            value: id, child: Text(b.branchName)));
+            child: Form(
+              key: memberFormKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: "Full Name"),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return "Enter a full name";
                       }
-                    }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: emailController,
+                    decoration: const InputDecoration(labelText: "Email"),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      final email = value?.trim() ?? "";
+                      if (email.isEmpty) return "Enter an email";
+                      if (!email.contains("@")) return "Enter a valid email";
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: passwordController,
+                    decoration:
+                        const InputDecoration(labelText: "Initial Password"),
+                    obscureText: true,
+                    validator: (value) {
+                      final password = value ?? "";
+                      if (password.length < 6) {
+                        return "Password must be at least 6 characters";
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  StreamBuilder<List<Branch>>(
+                    stream: vm.branchesStream,
+                    builder: (context, snapshot) {
+                      final branches = snapshot.data ?? [];
+                      final items = <DropdownMenuItem<String>>[];
+                      final seenIds = <String>{};
 
-                    // Safety check: Ensure selected value exists and is unique
-                    if (selectedBranchId != null &&
-                        selectedBranchId!.isNotEmpty &&
-                        !seenIds.contains(selectedBranchId)) {
-                      items.add(DropdownMenuItem(
-                          value: selectedBranchId,
-                          child: Text("Branch: $selectedBranchId")));
-                    }
+                      for (var b in branches) {
+                        final id = b.branchId ?? "";
+                        if (id.isNotEmpty && seenIds.add(id)) {
+                          items.add(DropdownMenuItem(
+                              value: id, child: Text(b.branchName)));
+                        }
+                      }
 
-                    return DropdownButtonFormField<String>(
-                      value: (selectedBranchId != null &&
-                              selectedBranchId!.isNotEmpty)
-                          ? selectedBranchId
-                          : null,
-                      hint: const Text("Select Branch"),
-                      items: items,
-                      onChanged: (val) =>
-                          setDialogState(() => selectedBranchId = val),
-                      decoration: const InputDecoration(labelText: "Branch"),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: role,
-                  items: ["Employee", "Manager"]
-                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                      .toList(),
-                  onChanged: (val) => setDialogState(() => role = val!),
-                  decoration: const InputDecoration(labelText: "Role"),
-                ),
-                TextField(
-                  controller: skillController,
-                  decoration: const InputDecoration(
-                      labelText: "Skills (Comma separated)"),
-                ),
-              ],
+                      // Safety check: Ensure selected value exists and is unique
+                      if (selectedBranchId != null &&
+                          selectedBranchId!.isNotEmpty &&
+                          !seenIds.contains(selectedBranchId)) {
+                        items.add(DropdownMenuItem(
+                            value: selectedBranchId,
+                            child: Text("Branch: $selectedBranchId")));
+                      }
+
+                      return DropdownButtonFormField<String>(
+                        value: (selectedBranchId != null &&
+                                selectedBranchId!.isNotEmpty)
+                            ? selectedBranchId
+                            : null,
+                        hint: const Text("Select Branch"),
+                        items: items,
+                        onChanged: (val) =>
+                            setDialogState(() => selectedBranchId = val),
+                        validator: (value) =>
+                            value == null ? "Select a branch" : null,
+                        decoration: const InputDecoration(labelText: "Branch"),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: role,
+                    items: ["Employee", "Manager"]
+                        .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                        .toList(),
+                    onChanged: (val) => setDialogState(() => role = val!),
+                    decoration: const InputDecoration(labelText: "Role"),
+                  ),
+                  TextFormField(
+                    controller: skillController,
+                    decoration: const InputDecoration(
+                        labelText: "Skills (Comma separated)"),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -186,10 +218,7 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                 child: const Text("Cancel")),
             ElevatedButton(
               onPressed: () async {
-                if (selectedBranchId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Please select a branch")),
-                  );
+                if (!memberFormKey.currentState!.validate()) {
                   return;
                 }
                 final result = await vm.addEmployee(
@@ -209,7 +238,11 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   if (result == "success") {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Member added successfully")),
+                      const SnackBar(
+                        content: Text(
+                          "Team member added. They can now sign in with the email and initial password.",
+                        ),
+                      ),
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -683,20 +716,112 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
     // For simplicity in this edit, I'll implement a quick 'Quick Task' dialog.
     
     final titleController = TextEditingController();
+    final skillsController = TextEditingController();
+    String assignedToId = member.userId;
+    String priority = "Medium";
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
         title: Text("Quick Task for ${member.name}"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("Time: ${hour}:00 - ${hour+1}:00"),
-            const SizedBox(height: 16),
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: "Task Title", hintText: "e.g., Client Meeting"),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Time: ${hour}:00 - ${hour + 1}:00"),
+              const SizedBox(height: 16),
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: "Task Title",
+                  hintText: "e.g., Client Meeting",
+                ),
+              ),
+              TextField(
+                controller: skillsController,
+                decoration: const InputDecoration(
+                  labelText: "Required Skills",
+                  hintText: "Flutter, Firebase",
+                ),
+              ),
+              const SizedBox(height: 16),
+              StreamBuilder<List<UserModel>>(
+                stream: vm.employeesStream,
+                builder: (context, snapshot) {
+                  final employees = snapshot.data?.isNotEmpty == true
+                      ? snapshot.data!
+                      : [member];
+                  if (!employees.any((e) => e.userId == assignedToId)) {
+                    assignedToId = employees.first.userId;
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text("Assignee",
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Spacer(),
+                          TextButton.icon(
+                            icon: const Icon(Icons.auto_awesome, size: 18),
+                            label: const Text("AI Suggest"),
+                            onPressed: () async {
+                              final suggestions =
+                                  await AiService().getSmartSuggestions(
+                                requiredSkills: skillsController.text
+                                    .split(",")
+                                    .map((s) => s.trim())
+                                    .where((s) => s.isNotEmpty)
+                                    .toList(),
+                                priority: priority,
+                                deadline: endTime,
+                                employees: employees,
+                              );
+                              if (suggestions.isNotEmpty && context.mounted) {
+                                _showAISuggestionsDialog(
+                                  context,
+                                  suggestions,
+                                  (selectedId) {
+                                    setDialogState(
+                                        () => assignedToId = selectedId);
+                                  },
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: assignedToId,
+                        items: employees
+                            .map((employee) => DropdownMenuItem(
+                                  value: employee.userId,
+                                  child: Text(employee.name),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() => assignedToId = value);
+                          }
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: priority,
+                items: ["Low", "Medium", "High", "Critical"]
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => priority = value);
+                },
+                decoration: const InputDecoration(labelText: "Priority"),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
@@ -707,12 +832,17 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
               final result = await vm.addTask(
                 title: titleController.text,
                 description: "Scheduled via Workload Planner",
-                assignedTo: member.userId,
+                assignedTo: assignedToId,
                 startTime: startTime,
                 endTime: endTime,
-                basePriority: "Medium",
+                basePriority: priority,
                 branchId: member.branchId,
                 assignedBy: vm.currentUserId ?? "Admin",
+                requiredSkills: skillsController.text
+                    .split(",")
+                    .map((s) => s.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toList(),
               );
               
               if (context.mounted) {
@@ -725,6 +855,7 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
             child: const Text("Schedule"),
           )
         ],
+      ),
       ),
     );
   }
@@ -845,6 +976,165 @@ class _ManageBranchesScreen extends StatelessWidget {
   }
 }
 
+
+class _CompanyAiAnalyticsScreen extends StatelessWidget {
+  const _CompanyAiAnalyticsScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = Provider.of<AdminViewModel>(context);
+
+    return StreamBuilder<List<TaskModel>>(
+      stream: viewModel.tasksStream,
+      builder: (context, taskSnapshot) {
+        return StreamBuilder<List<UserModel>>(
+          stream: viewModel.employeesStream,
+          builder: (context, employeeSnapshot) {
+            return StreamBuilder<List<PerformanceMetric>>(
+              stream: viewModel.performanceMetricsStream,
+              builder: (context, metricSnapshot) {
+                final tasks = taskSnapshot.data ?? [];
+                final employees = employeeSnapshot.data ?? [];
+                final metrics = metricSnapshot.data ?? [];
+                final docs = <Map<String, dynamic>>[
+                  {
+                    "title": "Company Context",
+                    "content":
+                        "Company: ${viewModel.currentCompanyName ?? 'Unknown'} with ${employees.length} team members and ${tasks.length} tasks.",
+                    "metadata": {"type": "company"}
+                  },
+                  ...employees.map((employee) {
+                    final employeeTasks = tasks
+                        .where((task) => task.assignedTo == employee.userId)
+                        .toList();
+                    final completed = employeeTasks
+                        .where((task) => task.status == "Completed")
+                        .length;
+                    final pending = employeeTasks
+                        .where((task) => task.status == "Pending")
+                        .length;
+                    final employeeMetrics = metrics
+                        .where((metric) => metric.userId == employee.userId)
+                        .toList();
+                    final focusMinutes = employeeMetrics.fold<int>(
+                        0, (sum, metric) => sum + metric.focusMinutes);
+                    return {
+                      "title": "Employee ${employee.name}",
+                      "content":
+                          "Role ${employee.role}, workload ${employee.currentWorkloadPercentage.toStringAsFixed(0)}%, completed $completed, pending $pending, app focus minutes $focusMinutes, skills ${employee.skills.join(', ')}.",
+                      "metadata": {
+                        "type": "employee",
+                        "userId": employee.userId
+                      }
+                    };
+                  }),
+                  ...tasks.take(30).map((task) => {
+                        "title": "Task ${task.title}",
+                        "content":
+                            "Status ${task.status}, priority ${task.basePriority}, assignedTo ${task.assignedTo}, due ${task.endTime}.",
+                        "metadata": {"type": "task", "taskId": task.taskId}
+                      }),
+                ];
+
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: 190,
+                      child: FutureBuilder<List<Map<String, dynamic>>>(
+                        future: AiService().getPerformanceInsights(
+                          employees: employees,
+                          tasks: tasks,
+                          metrics: metrics,
+                        ),
+                        builder: (context, snapshot) {
+                          final insights = snapshot.data ?? [];
+                          if (insights.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                "Employee efficiency insights will appear after tasks or opted-in app activity are recorded.",
+                              ),
+                            );
+                          }
+                          return ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.all(12),
+                            itemCount: insights.length,
+                            itemBuilder: (context, index) {
+                              final insight = insights[index];
+                              final score =
+                                  (insight["efficiencyScore"] as num?)
+                                          ?.toDouble() ??
+                                      0;
+                              return Container(
+                                width: 260,
+                                margin: const EdgeInsets.only(right: 12),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outline
+                                        .withOpacity(0.15),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      insight["employeeName"]?.toString() ??
+                                          "Employee",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "Efficiency ${score.toStringAsFixed(1)}",
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        color: score < 45
+                                            ? Colors.orange
+                                            : Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(insight["risk"]?.toString() ??
+                                        "Healthy"),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      insight["recommendation"]?.toString() ??
+                                          "",
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: AiAnalyticsChatbot(
+                        role: "Company Admin",
+                        documents: docs,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
 
 class _CompanySettingScreen extends StatelessWidget {
   const _CompanySettingScreen({super.key});

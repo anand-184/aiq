@@ -227,7 +227,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                 if (userDoc.exists) {
                                   final data = userDoc.data();
-                                  final String role = data?['role'] ?? "Employee";
+                                  final String role =
+                                      (data?['role'] as String? ?? "").trim();
 
                                   if (role == "SuperAdmin") {
                                     Navigator.pushReplacement(
@@ -237,10 +238,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                     Navigator.pushReplacement(
                                         context,
                                         MaterialPageRoute(builder: (context) => const CompanyAdminDashboard()));
-                                  } else {
+                                  } else if (role == "Employee") {
                                     Navigator.pushReplacement(
                                         context,
                                         MaterialPageRoute(builder: (context) => const EmpHomescreen()));
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Account role is missing. Please ask your admin to recreate or update this team member.",
+                                        ),
+                                      ),
+                                    );
+                                    setState(() => _isLoading = false);
                                   }
                                 } else {
                                   // NEW: Fallback for Company Admins whose user profile might be missing

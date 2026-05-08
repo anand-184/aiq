@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/company.dart';
+import '../models/performance_metric.dart';
 import '../models/payment_model.dart';
 import '../models/task_model.dart';
 import '../models/user_model.dart';
@@ -133,6 +134,23 @@ class FirestoreService {
       tasks.sort((a, b) => b.dynamicPriorityScore.compareTo(a.dynamicPriorityScore));
       return tasks;
     });
+  }
+
+  Stream<List<PerformanceMetric>> getPerformanceMetrics(String companyId) {
+    return _db
+        .collection('performance_metrics')
+        .where('companyId', isEqualTo: companyId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => PerformanceMetric.fromJson(doc.data()))
+            .toList());
+  }
+
+  Future<void> recordPerformanceMetric(PerformanceMetric metric) {
+    return _db
+        .collection('performance_metrics')
+        .doc(metric.metricId)
+        .set(metric.toJson());
   }
 
   // --- Scheduling Engine & Priority Logic ---
