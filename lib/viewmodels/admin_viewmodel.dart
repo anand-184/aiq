@@ -17,7 +17,7 @@ class AdminViewModel extends ChangeNotifier {
   String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
   TimeOfDay startHour = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay endHour = const TimeOfDay(hour: 18, minute: 0);
-  List<UserModel> _lastFetchedEmployees =[];
+  List<UserModel> _lastFetchedEmployees = [];
   List<UserModel> get currentEmployees => _lastFetchedEmployees;
 
   AdminViewModel() {
@@ -27,13 +27,18 @@ class AdminViewModel extends ChangeNotifier {
   void _initializeContext() {
     final String? uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
-      _firestoreService.getUserDetails(uid).listen((user) {
-        currentCompanyId = user.companyId;
-        currentCompanyName = user.companyName;
-        notifyListeners();
-      }, onError: (e) {
-        debugPrint("Error initializing AdminViewModel: $e");
-      });
+      _firestoreService
+          .getUserDetails(uid)
+          .listen(
+            (user) {
+              currentCompanyId = user.companyId;
+              currentCompanyName = user.companyName;
+              notifyListeners();
+            },
+            onError: (e) {
+              debugPrint("Error initializing AdminViewModel: $e");
+            },
+          );
     }
   }
 
@@ -75,8 +80,8 @@ class AdminViewModel extends ChangeNotifier {
   // Streams
   Stream<List<UserModel>> get employeesStream {
     if (currentCompanyId == null) return const Stream.empty();
-    return _firestoreService.getEmployees(currentCompanyId!).map((list){
-      _lastFetchedEmployees =list;
+    return _firestoreService.getEmployees(currentCompanyId!).map((list) {
+      _lastFetchedEmployees = list;
       return list;
     });
   }
@@ -106,10 +111,7 @@ class AdminViewModel extends ChangeNotifier {
     if (currentCompanyName == null) {
       return "Error: Company context not loaded yet.";
     }
-    final branch = Branch(
-      companyName: currentCompanyName!,
-      branchName: name,
-    );
+    final branch = Branch(companyName: currentCompanyName!, branchName: name);
     try {
       await _firestoreService.createBranch(branch);
       return "success";
@@ -250,23 +252,51 @@ class AdminViewModel extends ChangeNotifier {
     }
   }
 
-  Map<String, dynamic> calculateEmployeeStats(String userId, List<TaskModel> allTasks) {
+  Map<String, dynamic> calculateEmployeeStats(
+    String userId,
+    List<TaskModel> allTasks,
+  ) {
     final userTasks = allTasks.where((t) => t.assignedTo == userId).toList();
 
     int completed = userTasks.where((t) => t.status == 'Completed').length;
     int inProgress = userTasks.where((t) => t.status == 'In Progress').length;
     int pending = userTasks.where((t) => t.status == 'Pending').length;
+    int submitted = userTasks.where((t) => t.status == 'Submitted').length;
 
-    double completionRate = userTasks.isEmpty ? 0.0 : (completed / userTasks.length) * 100;
+    double completionRate = userTasks.isEmpty
+        ? 0.0
+        : (completed / userTasks.length) * 100;
 
     return {
       'total': userTasks.length,
       'completed': completed,
       'inProgress': inProgress,
       'pending': pending,
+      'submitted': submitted,
       'completionRate': completionRate,
       'tasks': userTasks,
     };
+  }
+
+  double calculateWorkloadPercentage(UserModel user, List<TaskModel> tasks) {
+    final capacityMinutes =
+        (user.maxCapacityHoursPerWeek <= 0
+            ? 40
+            : user.maxCapacityHoursPerWeek) *
+        60;
+    final activeMinutes = tasks
+        .where(
+          (task) =>
+              task.assignedTo == user.userId && task.status != "Completed",
+        )
+        .fold<int>(0, (total, task) {
+          if (task.estimatedDurationMinutes > 0) {
+            return total + task.estimatedDurationMinutes;
+          }
+          final minutes = task.endTime.difference(task.startTime).inMinutes;
+          return total + minutes.clamp(0, 24 * 60);
+        });
+    return (activeMinutes / capacityMinutes * 100).clamp(0, 100).toDouble();
   }
 
   Future<void> logout() async {

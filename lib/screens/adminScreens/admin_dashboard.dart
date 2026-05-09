@@ -12,6 +12,7 @@ import '../../models/feedback_model.dart';
 import '../../models/performance_metric.dart';
 import '../../models/task_model.dart';
 import '../../models/user_model.dart';
+import '../../services/calendar_service.dart';
 import '../../viewmodels/admin_viewmodel.dart';
 import '../../widgets/ai_analytics_chatbot.dart';
 
@@ -32,7 +33,7 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
     "Workload Scheduler",
     "AI Analytics",
     "Feedback",
-    "Settings"
+    "Settings",
   ];
 
   @override
@@ -66,8 +67,13 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   _buildNavTile(context, Icons.home_filled, "Branches", 3),
                   _buildNavTile(context, Icons.calendar_month, "Scheduler", 4),
                   _buildNavTile(context, Icons.auto_awesome, "AI Analytics", 5),
-                  _buildNavTile(context, Icons.feedback_outlined, "Feedback", 6),
-                  _buildNavTile(context, Icons.settings, "Settings", 7)
+                  _buildNavTile(
+                    context,
+                    Icons.feedback_outlined,
+                    "Feedback",
+                    6,
+                  ),
+                  _buildNavTile(context, Icons.settings, "Settings", 7),
                 ],
               ),
             ),
@@ -77,18 +83,38 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
           ],
         ),
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: const [
-          _AdminOverviewScreen(),
-          _TaskManagementScreen(),
-          _TeamMonitoringScreen(),
-          _ManageBranchesScreen(),
-          _WorkloadSchedulerScreen(),
-          _CompanyAiAnalyticsScreen(),
-          _CompanyFeedbackScreen(),
-          _CompanySettingScreen(),
-        ],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.02, 0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey(_selectedIndex),
+          child: IndexedStack(
+            index: _selectedIndex,
+            children: const [
+              _AdminOverviewScreen(),
+              _TaskManagementScreen(),
+              _TeamMonitoringScreen(),
+              _ManageBranchesScreen(),
+              _WorkloadSchedulerScreen(),
+              _CompanyAiAnalyticsScreen(),
+              _CompanyFeedbackScreen(),
+              _CompanySettingScreen(),
+            ],
+          ),
+        ),
       ),
       floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton(
@@ -96,11 +122,11 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
               child: const Icon(Icons.add_task),
             )
           : _selectedIndex == 2
-              ? FloatingActionButton(
-                  onPressed: () => _showAddMemberDialog(context, viewModel),
-                  child: const Icon(Icons.person_add),
-                )
-              : null,
+          ? FloatingActionButton(
+              onPressed: () => _showAddMemberDialog(context, viewModel),
+              child: const Icon(Icons.person_add),
+            )
+          : null,
     );
   }
 
@@ -147,8 +173,9 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   ),
                   TextFormField(
                     controller: passwordController,
-                    decoration:
-                        const InputDecoration(labelText: "Initial Password"),
+                    decoration: const InputDecoration(
+                      labelText: "Initial Password",
+                    ),
                     obscureText: true,
                     validator: (value) {
                       final password = value ?? "";
@@ -169,8 +196,12 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                       for (var b in branches) {
                         final id = b.branchId ?? "";
                         if (id.isNotEmpty && seenIds.add(id)) {
-                          items.add(DropdownMenuItem(
-                              value: id, child: Text(b.branchName)));
+                          items.add(
+                            DropdownMenuItem(
+                              value: id,
+                              child: Text(b.branchName),
+                            ),
+                          );
                         }
                       }
 
@@ -178,13 +209,17 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                       if (selectedBranchId != null &&
                           selectedBranchId!.isNotEmpty &&
                           !seenIds.contains(selectedBranchId)) {
-                        items.add(DropdownMenuItem(
+                        items.add(
+                          DropdownMenuItem(
                             value: selectedBranchId,
-                            child: Text("Branch: $selectedBranchId")));
+                            child: Text("Branch: $selectedBranchId"),
+                          ),
+                        );
                       }
 
                       return DropdownButtonFormField<String>(
-                        value: (selectedBranchId != null &&
+                        value:
+                            (selectedBranchId != null &&
                                 selectedBranchId!.isNotEmpty)
                             ? selectedBranchId
                             : null,
@@ -210,7 +245,8 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   TextFormField(
                     controller: skillController,
                     decoration: const InputDecoration(
-                        labelText: "Skills (Comma separated)"),
+                      labelText: "Skills (Comma separated)",
+                    ),
                   ),
                 ],
               ),
@@ -218,8 +254,9 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel")),
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
             ElevatedButton(
               onPressed: () async {
                 if (!memberFormKey.currentState!.validate()) {
@@ -249,9 +286,9 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                       ),
                     );
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(result)),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(result)));
                   }
                 }
               },
@@ -293,8 +330,9 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                 TextField(
                   controller: skillsController,
                   decoration: const InputDecoration(
-                      labelText: "Required Skills (comma separated)",
-                      hintText: "Flutter, Firebase, AI"),
+                    labelText: "Required Skills (comma separated)",
+                    hintText: "Flutter, Firebase, AI",
+                  ),
                 ),
                 const SizedBox(height: 16),
                 StreamBuilder<List<Branch>>(
@@ -307,8 +345,12 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                     for (var b in branches) {
                       final id = b.branchId ?? "";
                       if (id.isNotEmpty && seenIds.add(id)) {
-                        items.add(DropdownMenuItem(
-                            value: id, child: Text(b.branchName)));
+                        items.add(
+                          DropdownMenuItem(
+                            value: id,
+                            child: Text(b.branchName),
+                          ),
+                        );
                       }
                     }
 
@@ -316,13 +358,17 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                     if (selectedBranchId != null &&
                         selectedBranchId!.isNotEmpty &&
                         !seenIds.contains(selectedBranchId)) {
-                      items.add(DropdownMenuItem(
+                      items.add(
+                        DropdownMenuItem(
                           value: selectedBranchId,
-                          child: Text("Branch: $selectedBranchId")));
+                          child: Text("Branch: $selectedBranchId"),
+                        ),
+                      );
                     }
 
                     return DropdownButtonFormField<String>(
-                      value: (selectedBranchId != null &&
+                      value:
+                          (selectedBranchId != null &&
                               selectedBranchId!.isNotEmpty)
                           ? selectedBranchId
                           : null,
@@ -344,15 +390,23 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
 
                     for (var e in employees) {
                       if (seenIds.add(e.userId)) {
-                        items.add(DropdownMenuItem(
-                            value: e.userId, child: Text(e.name)));
+                        items.add(
+                          DropdownMenuItem(
+                            value: e.userId,
+                            child: Text(e.name),
+                          ),
+                        );
                       }
                     }
 
-                    if (assignedToId != null && !seenIds.contains(assignedToId)) {
-                      items.add(DropdownMenuItem(
+                    if (assignedToId != null &&
+                        !seenIds.contains(assignedToId)) {
+                      items.add(
+                        DropdownMenuItem(
                           value: assignedToId,
-                          child: Text("ID: $assignedToId")));
+                          child: Text("ID: $assignedToId"),
+                        ),
+                      );
                     }
 
                     return Column(
@@ -360,38 +414,46 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                       children: [
                         Row(
                           children: [
-                            const Text("Assignee",
-                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            const Text(
+                              "Assignee",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                             const Spacer(),
                             TextButton.icon(
                               icon: const Icon(Icons.auto_awesome, size: 18),
                               onPressed: () async {
                                 final ai_service = AiService();
-                                final suggestions =
-                                    await ai_service.getSmartSuggestions(
-                                        requiredSkills: skillsController.text
-                                            .split(",")
-                                            .map((s) => s.trim())
-                                            .where((s) => s.isNotEmpty)
-                                            .toList(),
-                                        priority: priority,
-                                        deadline: endTime,
-                                        employees: vm.currentEmployees);
+                                final suggestions = await ai_service
+                                    .getSmartSuggestions(
+                                      requiredSkills: skillsController.text
+                                          .split(",")
+                                          .map((s) => s.trim())
+                                          .where((s) => s.isNotEmpty)
+                                          .toList(),
+                                      priority: priority,
+                                      deadline: endTime,
+                                      employees: vm.currentEmployees,
+                                    );
                                 if (suggestions.isNotEmpty && context.mounted) {
                                   _showAISuggestionsDialog(
-                                      context, suggestions, (selectedId) {
-                                    setDialogState(() {
-                                      assignedToId = selectedId;
-                                    });
-                                  });
+                                    context,
+                                    suggestions,
+                                    (selectedId) {
+                                      setDialogState(() {
+                                        assignedToId = selectedId;
+                                      });
+                                    },
+                                  );
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text("No suggestions found")));
+                                    const SnackBar(
+                                      content: Text("No suggestions found"),
+                                    ),
+                                  );
                                 }
                               },
                               label: const Text("AI Suggest"),
-                            )
+                            ),
                           ],
                         ),
                         DropdownButtonFormField<String>(
@@ -400,8 +462,9 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                           items: items,
                           onChanged: (val) =>
                               setDialogState(() => assignedToId = val),
-                          decoration:
-                              const InputDecoration(labelText: "Assignee"),
+                          decoration: const InputDecoration(
+                            labelText: "Assignee",
+                          ),
                         ),
                       ],
                     );
@@ -437,7 +500,12 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                       if (time != null) {
                         setDialogState(() {
                           startTime = DateTime(
-                              date.year, date.month, date.day, time.hour, time.minute);
+                            date.year,
+                            date.month,
+                            date.day,
+                            time.hour,
+                            time.minute,
+                          );
                         });
                       }
                     }
@@ -462,7 +530,12 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                       if (time != null) {
                         setDialogState(() {
                           endTime = DateTime(
-                              date.year, date.month, date.day, time.hour, time.minute);
+                            date.year,
+                            date.month,
+                            date.day,
+                            time.hour,
+                            time.minute,
+                          );
                         });
                       }
                     }
@@ -473,13 +546,16 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel")),
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
             ElevatedButton(
               onPressed: () async {
                 if (assignedToId == null || selectedBranchId == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Please select a branch and an employee")),
+                    const SnackBar(
+                      content: Text("Please select a branch and an employee"),
+                    ),
                   );
                   return;
                 }
@@ -503,12 +579,14 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
                   if (result == "success") {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Task created successfully")),
+                      const SnackBar(
+                        content: Text("Task created successfully"),
+                      ),
                     );
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(result)),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(result)));
                   }
                 }
               },
@@ -544,7 +622,11 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
           SizedBox(height: 15),
           Text(
             'Techcadd Admin',
-            style: TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 22,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           Text(
             'Company Workspace',
@@ -555,38 +637,74 @@ class _CompanyAdminDashboardState extends State<CompanyAdminDashboard> {
     );
   }
 
-  Widget _buildNavTile(BuildContext context, IconData icon, String title, int index, {bool isLogout = false}) {
+  Widget _buildNavTile(
+    BuildContext context,
+    IconData icon,
+    String title,
+    int index, {
+    bool isLogout = false,
+  }) {
     final isSelected = _selectedIndex == index;
     final colorScheme = Theme.of(context).colorScheme;
 
     return ListTile(
       leading: Icon(
         icon,
-        color: isLogout ? Colors.red : (isSelected ? colorScheme.secondary : colorScheme.onSurfaceVariant),
+        color: isLogout
+            ? Colors.red
+            : (isSelected
+                  ? colorScheme.secondary
+                  : colorScheme.onSurfaceVariant),
       ),
       title: Text(
         title,
         style: TextStyle(
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isLogout ? Colors.red : (isSelected ? colorScheme.secondary : colorScheme.onSurface),
+          color: isLogout
+              ? Colors.red
+              : (isSelected ? colorScheme.secondary : colorScheme.onSurface),
         ),
       ),
       selected: isSelected,
       onTap: () async {
         if (isLogout) {
-          final vm = Provider.of<AdminViewModel>(context, listen: false);
-          await vm.logout();
-          if (context.mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
-              (route) => false,
-            );
-          }
+          Navigator.pop(context);
+          await _confirmLogout(context);
         } else {
           setState(() => _selectedIndex = index);
           Navigator.pop(context);
         }
       },
+    );
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Logout"),
+        content: const Text("Do you want to end this admin session?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.logout),
+            label: const Text("Logout"),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true || !context.mounted) return;
+    final vm = Provider.of<AdminViewModel>(context, listen: false);
+    await vm.logout();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
     );
   }
 }
@@ -595,7 +713,8 @@ class _WorkloadSchedulerScreen extends StatefulWidget {
   const _WorkloadSchedulerScreen({super.key});
 
   @override
-  State<_WorkloadSchedulerScreen> createState() => _WorkloadSchedulerScreenState();
+  State<_WorkloadSchedulerScreen> createState() =>
+      _WorkloadSchedulerScreenState();
 }
 
 class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
@@ -614,7 +733,8 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
             child: StreamBuilder<List<UserModel>>(
               stream: viewModel.employeesStream,
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
                 final members = snapshot.data!;
                 return ListView.builder(
                   itemCount: members.length,
@@ -623,7 +743,9 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
                     final isSelected = selectedMember?.userId == member.userId;
                     return ListTile(
                       selected: isSelected,
-                      selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      selectedTileColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.1),
                       leading: CircleAvatar(child: Text(member.name[0])),
                       title: Text(member.name),
                       onTap: () => setState(() => selectedMember = member),
@@ -636,7 +758,9 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
           // Right Side: Hourly Slots
           Expanded(
             child: selectedMember == null
-                ? const Center(child: Text("Select a team member to view their schedule"))
+                ? const Center(
+                    child: Text("Select a team member to view their schedule"),
+                  )
                 : _buildHourlySlots(viewModel, selectedMember!),
           ),
         ],
@@ -652,51 +776,71 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
     return StreamBuilder<List<TaskModel>>(
       stream: vm.tasksStream,
       builder: (context, snapshot) {
-        final tasks = snapshot.data?.where((t) => t.assignedTo == member.userId).toList() ?? [];
+        final tasks =
+            snapshot.data
+                ?.where((t) => t.assignedTo == member.userId)
+                .toList() ??
+            [];
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: (end - start) + 1,
           itemBuilder: (context, index) {
             final hour = start + index;
-            final timeLabel = "${hour > 12 ? hour - 12 : hour} ${hour >= 12 ? 'PM' : 'AM'}";
+            final timeLabel =
+                "${hour > 12 ? hour - 12 : hour} ${hour >= 12 ? 'PM' : 'AM'}";
 
             // Find all tasks that overlap with this hour slot
-            final tasksInSlot = tasks.where(
-              (t) => t.startTime.hour <= hour && t.endTime.hour > hour,
-            ).toList();
+            final tasksInSlot = tasks
+                .where((t) => t.startTime.hour <= hour && t.endTime.hour > hour)
+                .toList();
 
             final isBusy = tasksInSlot.isNotEmpty;
 
             return InkWell(
-              onTap: isBusy 
-                ? () => showEditTaskDialog(context, vm, tasksInSlot.first)
-                : () => _showAddTaskForSlot(context, vm, member, hour),
+              onTap: isBusy
+                  ? () => showEditTaskDialog(context, vm, tasksInSlot.first)
+                  : () => _showAddTaskForSlot(context, vm, member, hour),
               child: Container(
                 height: 80,
                 margin: const EdgeInsets.only(bottom: 8),
                 decoration: BoxDecoration(
-                  color: isBusy ? Colors.blue.withOpacity(0.1) : Colors.grey.withOpacity(0.05),
+                  color: isBusy
+                      ? Colors.blue.withOpacity(0.1)
+                      : Colors.grey.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isBusy ? Colors.blue : Colors.transparent),
+                  border: Border.all(
+                    color: isBusy ? Colors.blue : Colors.transparent,
+                  ),
                 ),
                 child: ListTile(
                   leading: SizedBox(
-                    width: 60, 
-                    child: Text(timeLabel, style: const TextStyle(fontWeight: FontWeight.bold))
+                    width: 60,
+                    child: Text(
+                      timeLabel,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                   title: isBusy
-                    ? Text(tasksInSlot.map((e) => e.title).join(", "), 
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis)
-                    : const Text("Free Slot", style: TextStyle(color: Colors.grey)),
-                  subtitle: isBusy 
-                    ? Text("${tasksInSlot.length} task(s) active") 
-                    : const Text("Tap to assign task"),
-                  trailing: isBusy 
-                    ? const Icon(Icons.lock, color: Colors.blue) 
-                    : const Icon(Icons.add_circle_outline, color: Colors.grey),
+                      ? Text(
+                          tasksInSlot.map((e) => e.title).join(", "),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      : const Text(
+                          "Free Slot",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                  subtitle: isBusy
+                      ? Text("${tasksInSlot.length} task(s) active")
+                      : const Text("Tap to assign task"),
+                  trailing: isBusy
+                      ? const Icon(Icons.lock, color: Colors.blue)
+                      : const Icon(
+                          Icons.add_circle_outline,
+                          color: Colors.grey,
+                        ),
                 ),
               ),
             );
@@ -706,11 +850,16 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
     );
   }
 
-  void _showAddTaskForSlot(BuildContext context, AdminViewModel vm, UserModel member, int hour) {
-    // We need to access _showAddTaskDialog from CompanyAdminDashboard, 
+  void _showAddTaskForSlot(
+    BuildContext context,
+    AdminViewModel vm,
+    UserModel member,
+    int hour,
+  ) {
+    // We need to access _showAddTaskDialog from CompanyAdminDashboard,
     // but since we are in a sub-widget state, we'll implement a simplified version or just call a helper.
     // For now, let's just use the existing logic in a reusable way or duplicate briefly for context.
-    
+
     final now = DateTime.now();
     final startTime = DateTime(now.year, now.month, now.day, hour, 0);
     final endTime = startTime.add(const Duration(hours: 1));
@@ -718,7 +867,7 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
     // To use the existing _showAddTaskDialog, we'd need it to be accessible.
     // Let's create a static helper or move it.
     // For simplicity in this edit, I'll implement a quick 'Quick Task' dialog.
-    
+
     final titleController = TextEditingController();
     final skillsController = TextEditingController();
     String assignedToId = member.userId;
@@ -727,139 +876,149 @@ class _WorkloadSchedulerScreenState extends State<_WorkloadSchedulerScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-        title: Text("Quick Task for ${member.name}"),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("Time: ${hour}:00 - ${hour + 1}:00"),
-              const SizedBox(height: 16),
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: "Task Title",
-                  hintText: "e.g., Client Meeting",
+          title: Text("Quick Task for ${member.name}"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Time: ${hour}:00 - ${hour + 1}:00"),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: "Task Title",
+                    hintText: "e.g., Client Meeting",
+                  ),
                 ),
-              ),
-              TextField(
-                controller: skillsController,
-                decoration: const InputDecoration(
-                  labelText: "Required Skills",
-                  hintText: "Flutter, Firebase",
+                TextField(
+                  controller: skillsController,
+                  decoration: const InputDecoration(
+                    labelText: "Required Skills",
+                    hintText: "Flutter, Firebase",
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              StreamBuilder<List<UserModel>>(
-                stream: vm.employeesStream,
-                builder: (context, snapshot) {
-                  final employees = snapshot.data?.isNotEmpty == true
-                      ? snapshot.data!
-                      : [member];
-                  if (!employees.any((e) => e.userId == assignedToId)) {
-                    assignedToId = employees.first.userId;
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text("Assignee",
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          const Spacer(),
-                          TextButton.icon(
-                            icon: const Icon(Icons.auto_awesome, size: 18),
-                            label: const Text("AI Suggest"),
-                            onPressed: () async {
-                              final suggestions =
-                                  await AiService().getSmartSuggestions(
-                                requiredSkills: skillsController.text
-                                    .split(",")
-                                    .map((s) => s.trim())
-                                    .where((s) => s.isNotEmpty)
-                                    .toList(),
-                                priority: priority,
-                                deadline: endTime,
-                                employees: employees,
-                              );
-                              if (suggestions.isNotEmpty && context.mounted) {
-                                _showAISuggestionsDialog(
-                                  context,
-                                  suggestions,
-                                  (selectedId) {
-                                    setDialogState(
-                                        () => assignedToId = selectedId);
-                                  },
-                                );
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      DropdownButtonFormField<String>(
-                        value: assignedToId,
-                        items: employees
-                            .map((employee) => DropdownMenuItem(
+                const SizedBox(height: 16),
+                StreamBuilder<List<UserModel>>(
+                  stream: vm.employeesStream,
+                  builder: (context, snapshot) {
+                    final employees = snapshot.data?.isNotEmpty == true
+                        ? snapshot.data!
+                        : [member];
+                    if (!employees.any((e) => e.userId == assignedToId)) {
+                      assignedToId = employees.first.userId;
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              "Assignee",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const Spacer(),
+                            TextButton.icon(
+                              icon: const Icon(Icons.auto_awesome, size: 18),
+                              label: const Text("AI Suggest"),
+                              onPressed: () async {
+                                final suggestions = await AiService()
+                                    .getSmartSuggestions(
+                                      requiredSkills: skillsController.text
+                                          .split(",")
+                                          .map((s) => s.trim())
+                                          .where((s) => s.isNotEmpty)
+                                          .toList(),
+                                      priority: priority,
+                                      deadline: endTime,
+                                      employees: employees,
+                                    );
+                                if (suggestions.isNotEmpty && context.mounted) {
+                                  _showAISuggestionsDialog(
+                                    context,
+                                    suggestions,
+                                    (selectedId) {
+                                      setDialogState(
+                                        () => assignedToId = selectedId,
+                                      );
+                                    },
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        DropdownButtonFormField<String>(
+                          value: assignedToId,
+                          items: employees
+                              .map(
+                                (employee) => DropdownMenuItem(
                                   value: employee.userId,
                                   child: Text(employee.name),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setDialogState(() => assignedToId = value);
-                          }
-                        },
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: priority,
-                items: ["Low", "Medium", "High", "Critical"]
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) setDialogState(() => priority = value);
-                },
-                decoration: const InputDecoration(labelText: "Priority"),
-              ),
-            ],
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setDialogState(() => assignedToId = value);
+                            }
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: priority,
+                  items: ["Low", "Medium", "High", "Critical"]
+                      .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => priority = value);
+                  },
+                  decoration: const InputDecoration(labelText: "Priority"),
+                ),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () async {
-              if (titleController.text.isEmpty) return;
-              
-              final result = await vm.addTask(
-                title: titleController.text,
-                description: "Scheduled via Workload Planner",
-                assignedTo: assignedToId,
-                startTime: startTime,
-                endTime: endTime,
-                basePriority: priority,
-                branchId: member.branchId,
-                assignedBy: vm.currentUserId ?? "Admin",
-                requiredSkills: skillsController.text
-                    .split(",")
-                    .map((s) => s.trim())
-                    .where((s) => s.isNotEmpty)
-                    .toList(),
-              );
-              
-              if (context.mounted) {
-                Navigator.pop(context);
-                if (result != "success") {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (titleController.text.isEmpty) return;
+
+                final result = await vm.addTask(
+                  title: titleController.text,
+                  description: "Scheduled via Workload Planner",
+                  assignedTo: assignedToId,
+                  startTime: startTime,
+                  endTime: endTime,
+                  basePriority: priority,
+                  branchId: member.branchId,
+                  assignedBy: vm.currentUserId ?? "Admin",
+                  requiredSkills: skillsController.text
+                      .split(",")
+                      .map((s) => s.trim())
+                      .where((s) => s.isNotEmpty)
+                      .toList(),
+                );
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  if (result != "success") {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(result)));
+                  }
                 }
-              }
-            },
-            child: const Text("Schedule"),
-          )
-        ],
-      ),
+              },
+              child: const Text("Schedule"),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -883,7 +1042,9 @@ class _ManageBranchesScreen extends StatelessWidget {
             return Center(child: Text("Error: ${snapshot.error}"));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("No branches found. Click + to add."));
+            return const Center(
+              child: Text("No branches found. Click + to add."),
+            );
           }
 
           final branches = snapshot.data!;
@@ -896,9 +1057,12 @@ class _ManageBranchesScreen extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
                   leading: const CircleAvatar(child: Icon(Icons.home_filled)),
-                  title: Text(branch.branchName,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  onTap: () => _showEditBranchDialog(context, viewModel, branch),
+                  title: Text(
+                    branch.branchName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  onTap: () =>
+                      _showEditBranchDialog(context, viewModel, branch),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: () => viewModel.removeBranch(branch.branchId!),
@@ -917,7 +1081,10 @@ class _ManageBranchesScreen extends StatelessWidget {
   }
 
   void _showEditBranchDialog(
-      BuildContext context, AdminViewModel vm, Branch branch) {
+    BuildContext context,
+    AdminViewModel vm,
+    Branch branch,
+  ) {
     final controller = TextEditingController(text: branch.branchName);
     showDialog(
       context: context,
@@ -929,8 +1096,9 @@ class _ManageBranchesScreen extends StatelessWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (controller.text.isNotEmpty) {
@@ -957,16 +1125,19 @@ class _ManageBranchesScreen extends StatelessWidget {
           decoration: const InputDecoration(hintText: "Branch Name"),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (controller.text.isNotEmpty) {
                 final result = await vm.addBranch(controller.text);
                 if (context.mounted) {
                   if (result != "success") {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(result)),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(result)));
                   }
                   Navigator.pop(context);
                 }
@@ -979,7 +1150,6 @@ class _ManageBranchesScreen extends StatelessWidget {
     );
   }
 }
-
 
 class _CompanyAiAnalyticsScreen extends StatelessWidget {
   const _CompanyAiAnalyticsScreen();
@@ -1004,68 +1174,92 @@ class _CompanyAiAnalyticsScreen extends StatelessWidget {
                     final employees = employeeSnapshot.data ?? [];
                     final metrics = metricSnapshot.data ?? [];
                     final feedback = feedbackSnapshot.data ?? [];
-                final docs = <Map<String, dynamic>>[
-                  {
-                    "title": "Company Context",
-                    "content":
-                        "Company: ${viewModel.currentCompanyName ?? 'Unknown'} with ${employees.length} team members and ${tasks.length} tasks.",
-                    "metadata": {"type": "company"}
-                  },
-                  ...employees.map((employee) {
-                    final employeeTasks = tasks
-                        .where((task) => task.assignedTo == employee.userId)
+                    final adjustedEmployees = employees
+                        .map(
+                          (employee) => employee.copyWith(
+                            currentWorkloadPercentage: viewModel
+                                .calculateWorkloadPercentage(employee, tasks),
+                          ),
+                        )
                         .toList();
-                    final completed = employeeTasks
-                        .where((task) => task.status == "Completed")
-                        .length;
-                    final pending = employeeTasks
-                        .where((task) => task.status == "Pending")
-                        .length;
-                    final employeeMetrics = metrics
-                        .where((metric) => metric.userId == employee.userId)
-                        .toList();
-                    final focusMinutes = employeeMetrics.fold<int>(
-                        0, (sum, metric) => sum + metric.focusMinutes);
-                    final keystrokesPerHour = employeeMetrics.isEmpty
-                        ? 0.0
-                        : employeeMetrics
-                                .map((metric) => metric.keystrokesPerHour)
-                                .reduce((a, b) => a + b) /
-                            employeeMetrics.length;
-                    return {
-                      "title": "Employee ${employee.name}",
-                      "content":
-                          "Role ${employee.role}, workload ${employee.currentWorkloadPercentage.toStringAsFixed(0)}%, completed $completed, pending $pending, app focus minutes $focusMinutes, keystrokes per hour ${keystrokesPerHour.toStringAsFixed(0)}, skills ${employee.skills.join(', ')}.",
-                      "metadata": {
-                        "type": "employee",
-                        "userId": employee.userId
-                      }
-                    };
-                  }),
-                  ...tasks.take(30).map((task) => {
-                        "title": "Task ${task.title}",
+                    final docs = <Map<String, dynamic>>[
+                      {
+                        "title": "Company Context",
                         "content":
-                            "Status ${task.status}, priority ${task.basePriority}, assignedTo ${task.assignedTo}, due ${task.endTime}, submission ${task.submissionNote}, reviewer feedback ${task.reviewerFeedback}.",
-                        "metadata": {"type": "task", "taskId": task.taskId}
+                            "Company: ${viewModel.currentCompanyName ?? 'Unknown'} with ${adjustedEmployees.length} team members and ${tasks.length} tasks.",
+                        "metadata": {"type": "company"},
+                      },
+                      ...adjustedEmployees.map((employee) {
+                        final employeeTasks = tasks
+                            .where((task) => task.assignedTo == employee.userId)
+                            .toList();
+                        final completed = employeeTasks
+                            .where((task) => task.status == "Completed")
+                            .length;
+                        final pending = employeeTasks
+                            .where((task) => task.status == "Pending")
+                            .length;
+                        final employeeMetrics = metrics
+                            .where((metric) => metric.userId == employee.userId)
+                            .toList();
+                        final focusMinutes = employeeMetrics.fold<int>(
+                          0,
+                          (sum, metric) => sum + metric.focusMinutes,
+                        );
+                        final keystrokesPerHour = employeeMetrics.isEmpty
+                            ? 0.0
+                            : employeeMetrics
+                                      .map((metric) => metric.keystrokesPerHour)
+                                      .reduce((a, b) => a + b) /
+                                  employeeMetrics.length;
+                        return {
+                          "title": "Employee ${employee.name}",
+                          "content":
+                              "Role ${employee.role}, workload ${employee.currentWorkloadPercentage.toStringAsFixed(0)}%, completed $completed, pending $pending, app focus minutes $focusMinutes, keystrokes per hour ${keystrokesPerHour.toStringAsFixed(0)}, skills ${employee.skills.join(', ')}.",
+                          "metadata": {
+                            "type": "employee",
+                            "userId": employee.userId,
+                          },
+                        };
                       }),
-                  ...feedback.take(20).map((item) => {
-                        "title": "Feedback ${item.category}",
-                        "content":
-                            "${item.userName} rated ${item.rating}/5: ${item.message}. Status ${item.status}.",
-                        "metadata": {
-                          "type": "feedback",
-                          "feedbackId": item.feedbackId
-                        }
-                      }),
-                ];
+                      ...tasks
+                          .take(30)
+                          .map(
+                            (task) => {
+                              "title": "Task ${task.title}",
+                              "content":
+                                  "Status ${task.status}, priority ${task.basePriority}, assignedTo ${task.assignedTo}, due ${task.endTime}, submission ${task.submissionNote}, reviewer feedback ${task.reviewerFeedback}.",
+                              "metadata": {
+                                "type": "task",
+                                "taskId": task.taskId,
+                              },
+                            },
+                          ),
+                      ...feedback
+                          .take(20)
+                          .map(
+                            (item) => {
+                              "title": "Feedback ${item.category}",
+                              "content":
+                                  "${item.userName} rated ${item.rating}/5: ${item.message}. Status ${item.status}.",
+                              "metadata": {
+                                "type": "feedback",
+                                "feedbackId": item.feedbackId,
+                              },
+                            },
+                          ),
+                    ];
 
                     return Column(
                       children: [
-                        SizedBox(
-                          height: 190,
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: 220,
+                            maxHeight: 260,
+                          ),
                           child: FutureBuilder<List<Map<String, dynamic>>>(
                             future: AiService().getPerformanceInsights(
-                              employees: employees,
+                              employees: adjustedEmployees,
                               tasks: tasks,
                               metrics: metrics,
                             ),
@@ -1078,67 +1272,20 @@ class _CompanyAiAnalyticsScreen extends StatelessWidget {
                                   ),
                                 );
                               }
-                              return ListView.builder(
+                              return ListView.separated(
                                 scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.all(12),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  14,
+                                  16,
+                                  12,
+                                ),
                                 itemCount: insights.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 12),
                                 itemBuilder: (context, index) {
-                                  final insight = insights[index];
-                                  final score =
-                                      (insight["efficiencyScore"] as num?)
-                                              ?.toDouble() ??
-                                          0;
-                                  return Container(
-                                    width: 260,
-                                    margin: const EdgeInsets.only(right: 12),
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.surface,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .outline
-                                            .withOpacity(0.15),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          insight["employeeName"]?.toString() ??
-                                              "Employee",
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          "Efficiency ${score.toStringAsFixed(1)}",
-                                          style: TextStyle(
-                                            fontSize: 22,
-                                            color: score < 45
-                                                ? Colors.orange
-                                                : Colors.green,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        Text(insight["risk"]?.toString() ??
-                                            "Healthy"),
-                                        Text(
-                                          "Keys/hr ${(insight["keystrokesPerHour"] as num?)?.toStringAsFixed(0) ?? '0'}",
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          insight["recommendation"]?.toString() ??
-                                              "",
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
+                                  return _AnalyticsInsightCard(
+                                    insight: insights[index],
                                   );
                                 },
                               );
@@ -1153,12 +1300,136 @@ class _CompanyAiAnalyticsScreen extends StatelessWidget {
                         ),
                       ],
                     );
+                  },
                 );
               },
             );
           },
         );
       },
+    );
+  }
+}
+
+class _AnalyticsInsightCard extends StatelessWidget {
+  const _AnalyticsInsightCard({required this.insight});
+
+  final Map<String, dynamic> insight;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = (insight["efficiencyScore"] as num?)?.toDouble() ?? 0;
+    final completion = (insight["completionRate"] as num?)?.toDouble() ?? 0;
+    final color = score < 45
+        ? Colors.orange
+        : score < 70
+        ? Colors.amber
+        : Colors.green;
+
+    return SizedBox(
+      width: 286,
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      insight["employeeName"]?.toString() ?? "Employee",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Icon(Icons.monitor_heart_outlined, color: color, size: 18),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "${score.toStringAsFixed(1)} efficiency",
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 22,
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: (score / 100).clamp(0, 1),
+                  minHeight: 8,
+                  color: color,
+                  backgroundColor: color.withOpacity(0.16),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _MiniSignal(
+                    label: insight["risk"]?.toString() ?? "Healthy",
+                    icon: Icons.health_and_safety_outlined,
+                  ),
+                  _MiniSignal(
+                    label: "${completion.toStringAsFixed(0)}% done",
+                    icon: Icons.task_alt_outlined,
+                  ),
+                  _MiniSignal(
+                    label:
+                        "${(insight["keystrokesPerHour"] as num?)?.toStringAsFixed(0) ?? '0'} keys/hr",
+                    icon: Icons.keyboard_outlined,
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                insight["recommendation"]?.toString() ?? "",
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.72),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniSignal extends StatelessWidget {
+  const _MiniSignal({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 11)),
+        ],
+      ),
     );
   }
 }
@@ -1183,11 +1454,7 @@ class _CompanyFeedbackScreen extends StatelessWidget {
                 actionLabel: "Send",
                 onAction: admin == null
                     ? null
-                    : () => _showAdminFeedbackDialog(
-                          context,
-                          viewModel,
-                          admin,
-                        ),
+                    : () => _showAdminFeedbackDialog(context, viewModel, admin),
               ),
             ),
             Expanded(
@@ -1247,8 +1514,10 @@ class _CompanyFeedbackScreen extends StatelessWidget {
               DropdownButtonFormField<String>(
                 value: category,
                 items: ["Platform", "Billing", "Analytics", "Support"]
-                    .map((item) =>
-                        DropdownMenuItem(value: item, child: Text(item)))
+                    .map(
+                      (item) =>
+                          DropdownMenuItem(value: item, child: Text(item)),
+                    )
                     .toList(),
                 onChanged: (value) {
                   if (value != null) setDialogState(() => category = value);
@@ -1259,10 +1528,12 @@ class _CompanyFeedbackScreen extends StatelessWidget {
               DropdownButtonFormField<int>(
                 value: rating,
                 items: [1, 2, 3, 4, 5]
-                    .map((item) => DropdownMenuItem(
-                          value: item,
-                          child: Text("$item / 5"),
-                        ))
+                    .map(
+                      (item) => DropdownMenuItem(
+                        value: item,
+                        child: Text("$item / 5"),
+                      ),
+                    )
                     .toList(),
                 onChanged: (value) {
                   if (value != null) setDialogState(() => rating = value);
@@ -1337,9 +1608,9 @@ class _CompanySettingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<AdminViewModel>(context);
-    
+
     return StreamBuilder<UserModel>(
-      stream: viewModel.AdminProfile, 
+      stream: viewModel.AdminProfile,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const _SettingSkeleton();
@@ -1352,14 +1623,18 @@ class _CompanySettingScreen extends StatelessWidget {
         }
 
         final admin = snapshot.data!;
-        final timeDisplay = "${viewModel.startHour.format(context)} - ${viewModel.endHour.format(context)}";
+        final timeDisplay =
+            "${viewModel.startHour.format(context)} - ${viewModel.endHour.format(context)}";
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Admin Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Admin Details",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 enabled: false,
@@ -1381,7 +1656,10 @@ class _CompanySettingScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text("Operational Settings", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Operational Settings",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
               InkWell(
                 onTap: () => _pickHours(context, viewModel),
@@ -1396,11 +1674,11 @@ class _CompanySettingScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-              )
+              ),
             ],
           ),
         );
-      }
+      },
     );
   }
 
@@ -1423,7 +1701,9 @@ class _CompanySettingScreen extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Working Hours set: ${start.format(context)} - ${end.format(context)}"),
+              content: Text(
+                "Working Hours set: ${start.format(context)} - ${end.format(context)}",
+              ),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -1449,17 +1729,20 @@ class _SettingSkeleton extends StatelessWidget {
           children: [
             Container(width: 120, height: 20, color: Colors.white),
             const SizedBox(height: 20),
-            ...List.generate(2, (index) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Container(
-                width: double.infinity,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8)
+            ...List.generate(
+              2,
+              (index) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Container(
+                  width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
-            )),
+            ),
             const SizedBox(height: 24),
             Container(width: 150, height: 20, color: Colors.white),
             const SizedBox(height: 20),
@@ -1467,10 +1750,10 @@ class _SettingSkeleton extends StatelessWidget {
               height: 56,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.white, 
-                borderRadius: BorderRadius.circular(8)
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -1490,46 +1773,72 @@ class _AdminOverviewScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Team Performance",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text(
+            "Team Performance",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 20),
           StreamBuilder<List<TaskModel>>(
-              stream: viewModel.tasksStream,
-              builder: (context, taskSnapshot) {
-                final activeTasks = taskSnapshot.data
-                        ?.where((t) => t.status != 'Completed')
-                        .length ??
-                    0;
-                return StreamBuilder<List<UserModel>>(
-                    stream: viewModel.employeesStream,
-                    builder: (context, empSnapshot) {
-                      final teamSize = empSnapshot.data?.length ?? 0;
-                      return Column(
+            stream: viewModel.tasksStream,
+            builder: (context, taskSnapshot) {
+              final activeTasks =
+                  taskSnapshot.data
+                      ?.where((t) => t.status != 'Completed')
+                      .length ??
+                  0;
+              return StreamBuilder<List<UserModel>>(
+                stream: viewModel.employeesStream,
+                builder: (context, empSnapshot) {
+                  final teamSize = empSnapshot.data?.length ?? 0;
+                  return Column(
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              _buildStatCard(context, "Active Tasks",
-                                  "$activeTasks", Icons.task, Colors.blue),
-                              const SizedBox(width: 16),
-                              _buildStatCard(context, "Team Size", "$teamSize",
-                                  Icons.people, Colors.orange),
-                            ],
+                          _buildStatCard(
+                            context,
+                            "Active Tasks",
+                            "$activeTasks",
+                            Icons.task,
+                            Colors.blue,
                           ),
-                          const SizedBox(height: 16),
-                          _buildStatCard(context, "Company",
-                              viewModel.currentCompanyName ?? "Loading...",
-                              Icons.business, Colors.green,
-                              fullWidth: true),
+                          const SizedBox(width: 16),
+                          _buildStatCard(
+                            context,
+                            "Team Size",
+                            "$teamSize",
+                            Icons.people,
+                            Colors.orange,
+                          ),
                         ],
-                      );
-                    });
-              }),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildStatCard(
+                        context,
+                        "Company",
+                        viewModel.currentCompanyName ?? "Loading...",
+                        Icons.business,
+                        Colors.green,
+                        fullWidth: true,
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String label, String value, IconData icon, Color color, {bool fullWidth = false}) {
+  Widget _buildStatCard(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+    Color color, {
+    bool fullWidth = false,
+  }) {
     final card = Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1542,12 +1851,22 @@ class _AdminOverviewScreen extends StatelessWidget {
         children: [
           Icon(icon, color: color),
           const SizedBox(height: 15),
-          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );
-    return fullWidth ? SizedBox(width: double.infinity, child: card) : Expanded(child: card);
+    return fullWidth
+        ? SizedBox(width: double.infinity, child: card)
+        : Expanded(child: card);
   }
 }
 
@@ -1560,9 +1879,13 @@ class _TaskManagementScreen extends StatelessWidget {
     return StreamBuilder<List<TaskModel>>(
       stream: viewModel.tasksStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No tasks found. Click + to create."));
-        
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: CircularProgressIndicator());
+        if (!snapshot.hasData || snapshot.data!.isEmpty)
+          return const Center(
+            child: Text("No tasks found. Click + to create."),
+          );
+
         final tasks = snapshot.data!;
         return ListView.builder(
           padding: const EdgeInsets.all(12),
@@ -1573,12 +1896,17 @@ class _TaskManagementScreen extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
                 onTap: () => showEditTaskDialog(context, viewModel, task),
-                leading: Icon(Icons.assignment,
-                    color: getPriorityColor(task.basePriority)),
-                title: Text(task.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle:
-                    Text("Status: ${task.status} • Assigned to: ${task.assignedTo}"),
+                leading: Icon(
+                  Icons.assignment,
+                  color: getPriorityColor(task.basePriority),
+                ),
+                title: Text(
+                  task.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  "Status: ${task.status} • Assigned to: ${task.assignedTo}",
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
                   onPressed: () => viewModel.removeTask(task.taskId),
@@ -1594,18 +1922,27 @@ class _TaskManagementScreen extends StatelessWidget {
 
 Color getPriorityColor(String priority) {
   switch (priority) {
-    case 'Critical': return Colors.red;
-    case 'High': return Colors.orange;
-    case 'Medium': return Colors.blue;
-    default: return Colors.green;
+    case 'Critical':
+      return Colors.red;
+    case 'High':
+      return Colors.orange;
+    case 'Medium':
+      return Colors.blue;
+    default:
+      return Colors.green;
   }
 }
 
-void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task) {
+void showEditTaskDialog(
+  BuildContext context,
+  AdminViewModel vm,
+  TaskModel task,
+) {
   final titleController = TextEditingController(text: task.title);
   final descController = TextEditingController(text: task.description);
-  final skillsController =
-      TextEditingController(text: task.requiredSkills.join(", "));
+  final skillsController = TextEditingController(
+    text: task.requiredSkills.join(", "),
+  );
   String priority = task.basePriority;
   String? assignedToId = task.assignedTo;
   String? selectedBranchId = task.branchId;
@@ -1645,10 +1982,37 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                   title: const Text("Submission Link"),
                   subtitle: Text(task.submissionLink),
                 ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.auto_awesome_outlined),
+                title: const Text("AI follow-up"),
+                subtitle: Text(AiService().taskFollowUp(task)),
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final opened = await CalendarService().openGoogleCalendar(
+                      task,
+                    );
+                    if (!context.mounted || opened) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Google Calendar link copied. Paste it in a browser to add this task.",
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  label: const Text("Add to Google Calendar"),
+                ),
+              ),
               TextField(
                 controller: skillsController,
                 decoration: const InputDecoration(
-                    labelText: "Required Skills (comma separated)"),
+                  labelText: "Required Skills (comma separated)",
+                ),
               ),
               const SizedBox(height: 16),
               StreamBuilder<List<Branch>>(
@@ -1661,8 +2025,9 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                   for (var b in branches) {
                     final id = b.branchId ?? "";
                     if (id.isNotEmpty && seenIds.add(id)) {
-                      items.add(DropdownMenuItem(
-                          value: id, child: Text(b.branchName)));
+                      items.add(
+                        DropdownMenuItem(value: id, child: Text(b.branchName)),
+                      );
                     }
                   }
 
@@ -1670,13 +2035,17 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                   if (selectedBranchId != null &&
                       selectedBranchId!.isNotEmpty &&
                       !seenIds.contains(selectedBranchId)) {
-                    items.add(DropdownMenuItem(
+                    items.add(
+                      DropdownMenuItem(
                         value: selectedBranchId,
-                        child: Text("Branch: $selectedBranchId")));
+                        child: Text("Branch: $selectedBranchId"),
+                      ),
+                    );
                   }
 
                   return DropdownButtonFormField<String>(
-                    value: (selectedBranchId != null &&
+                    value:
+                        (selectedBranchId != null &&
                             selectedBranchId!.isNotEmpty)
                         ? selectedBranchId
                         : null,
@@ -1698,17 +2067,21 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
 
                   for (var e in employees) {
                     if (e.userId.isNotEmpty && seenIds.add(e.userId)) {
-                      items.add(DropdownMenuItem(
-                          value: e.userId, child: Text(e.name)));
+                      items.add(
+                        DropdownMenuItem(value: e.userId, child: Text(e.name)),
+                      );
                     }
                   }
 
                   if (assignedToId != null &&
                       assignedToId!.isNotEmpty &&
                       !seenIds.contains(assignedToId)) {
-                    items.add(DropdownMenuItem(
+                    items.add(
+                      DropdownMenuItem(
                         value: assignedToId,
-                        child: Text("Employee: $assignedToId")));
+                        child: Text("Employee: $assignedToId"),
+                      ),
+                    );
                   }
 
                   return Column(
@@ -1716,51 +2089,58 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                     children: [
                       Row(
                         children: [
-                          const Text("Assignee",
-                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            "Assignee",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           const Spacer(),
                           TextButton.icon(
                             icon: const Icon(Icons.auto_awesome, size: 18),
                             onPressed: () async {
                               final ai_service = AiService();
-                              final suggestions =
-                                  await ai_service.getSmartSuggestions(
-                                      requiredSkills: skillsController.text
-                                          .split(",")
-                                          .map((s) => s.trim())
-                                          .where((s) => s.isNotEmpty)
-                                          .toList(),
-                                      priority: priority,
-                                      deadline: endTime,
-                                      employees: vm.currentEmployees);
+                              final suggestions = await ai_service
+                                  .getSmartSuggestions(
+                                    requiredSkills: skillsController.text
+                                        .split(",")
+                                        .map((s) => s.trim())
+                                        .where((s) => s.isNotEmpty)
+                                        .toList(),
+                                    priority: priority,
+                                    deadline: endTime,
+                                    employees: vm.currentEmployees,
+                                  );
                               if (suggestions.isNotEmpty && context.mounted) {
-                                _showAISuggestionsDialog(
-                                    context, suggestions, (selectedId) {
+                                _showAISuggestionsDialog(context, suggestions, (
+                                  selectedId,
+                                ) {
                                   setDialogState(() {
                                     assignedToId = selectedId;
                                   });
                                 });
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text("No suggestions found")));
+                                  const SnackBar(
+                                    content: Text("No suggestions found"),
+                                  ),
+                                );
                               }
                             },
                             label: const Text("AI Suggest"),
-                          )
+                          ),
                         ],
                       ),
                       DropdownButtonFormField<String>(
-                        value: (assignedToId != null &&
-                                assignedToId!.isNotEmpty)
+                        value:
+                            (assignedToId != null && assignedToId!.isNotEmpty)
                             ? assignedToId
                             : null,
                         hint: const Text("Assign To Employee"),
                         items: items,
                         onChanged: (val) =>
                             setDialogState(() => assignedToId = val),
-                        decoration:
-                            const InputDecoration(labelText: "Assignee"),
+                        decoration: const InputDecoration(
+                          labelText: "Assignee",
+                        ),
                       ),
                     ],
                   );
@@ -1784,7 +2164,9 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                   final date = await showDatePicker(
                     context: context,
                     initialDate: startTime,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    firstDate: DateTime.now().subtract(
+                      const Duration(days: 365),
+                    ),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
                   if (date != null) {
@@ -1794,8 +2176,13 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                     );
                     if (time != null) {
                       setDialogState(() {
-                        startTime = DateTime(date.year, date.month, date.day,
-                            time.hour, time.minute);
+                        startTime = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          time.hour,
+                          time.minute,
+                        );
                       });
                     }
                   }
@@ -1809,7 +2196,9 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                   final date = await showDatePicker(
                     context: context,
                     initialDate: endTime,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    firstDate: DateTime.now().subtract(
+                      const Duration(days: 365),
+                    ),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
                   if (date != null) {
@@ -1819,8 +2208,13 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                     );
                     if (time != null) {
                       setDialogState(() {
-                        endTime = DateTime(date.year, date.month, date.day,
-                            time.hour, time.minute);
+                        endTime = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          time.hour,
+                          time.minute,
+                        );
                       });
                     }
                   }
@@ -1831,8 +2225,9 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () async {
               final updatedTask = task.copyWith(
@@ -1848,7 +2243,9 @@ void showEditTaskDialog(BuildContext context, AdminViewModel vm, TaskModel task)
                 basePriority: priority,
                 startTime: startTime,
                 endTime: endTime,
-                estimatedDurationMinutes: endTime.difference(startTime).inMinutes,
+                estimatedDurationMinutes: endTime
+                    .difference(startTime)
+                    .inMinutes,
               );
               await vm.updateTask(updatedTask);
               if (context.mounted) Navigator.pop(context);
@@ -1935,10 +2332,13 @@ class _TeamMonitoringScreen extends StatelessWidget {
     return StreamBuilder<List<UserModel>>(
       stream: viewModel.employeesStream,
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: CircularProgressIndicator());
+        if (!snapshot.hasData || snapshot.data!.isEmpty)
+          return const Center(
+            child: Text("No employees found. Invite them in Settings."),
+          );
 
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No employees found. Invite them in Settings."));
-        
         final employees = snapshot.data!;
         return ListView.builder(
           padding: const EdgeInsets.all(12),
@@ -1949,15 +2349,25 @@ class _TeamMonitoringScreen extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                onTap: (){
-                  Navigator.push(context,MaterialPageRoute(builder: (context)=>EmployeeAnalyticsScreen(employee: emp)));
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          EmployeeAnalyticsScreen(employee: emp),
+                    ),
+                  );
                 },
                 leading: CircleAvatar(
-                  backgroundColor:
-                      Theme.of(context).colorScheme.secondaryContainer,
-                  child: Text(initials,
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.secondary)),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.secondaryContainer,
+                  child: Text(
+                    initials,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  ),
                 ),
                 title: Text(emp.name),
                 subtitle: Text("${emp.role} • ${emp.email}"),
@@ -1968,19 +2378,40 @@ class _TeamMonitoringScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-
-                        Text("${emp.currentWorkloadPercentage.toStringAsFixed(0)}%",
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
+                        StreamBuilder<List<TaskModel>>(
+                          stream: viewModel.tasksStream,
+                          builder: (context, taskSnapshot) {
+                            final workload = viewModel
+                                .calculateWorkloadPercentage(
+                                  emp,
+                                  taskSnapshot.data ?? [],
+                                );
+                            return Text(
+                              "${workload.toStringAsFixed(0)}%",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            );
+                          },
+                        ),
                         const Text("Load", style: TextStyle(fontSize: 10)),
                       ],
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.person_remove_outlined, color: Colors.red),
-                      onPressed: () => _confirmRemoveEmployee(context, viewModel, emp),
+                      icon: const Icon(
+                        Icons.person_remove_outlined,
+                        color: Colors.red,
+                      ),
+                      onPressed: () =>
+                          _confirmRemoveEmployee(context, viewModel, emp),
                     ),
-                    IconButton(onPressed: ()=>_showEditMemberDialog(context, viewModel, emp), icon: const Icon(Icons.edit,color: Colors.white,))
+                    IconButton(
+                      onPressed: () =>
+                          _showEditMemberDialog(context, viewModel, emp),
+                      icon: const Icon(Icons.edit, color: Colors.white),
+                    ),
                   ],
                 ),
               ),
@@ -1992,11 +2423,15 @@ class _TeamMonitoringScreen extends StatelessWidget {
   }
 
   void _showEditMemberDialog(
-      BuildContext context, AdminViewModel vm, UserModel emp) {
+    BuildContext context,
+    AdminViewModel vm,
+    UserModel emp,
+  ) {
     final roleController = TextEditingController(text: emp.role);
     final skillController = TextEditingController(text: emp.skills.join(", "));
-    final capacityController =
-        TextEditingController(text: emp.maxCapacityHoursPerWeek.toString());
+    final capacityController = TextEditingController(
+      text: emp.maxCapacityHoursPerWeek.toString(),
+    );
 
     showDialog(
       context: context,
@@ -2006,23 +2441,29 @@ class _TeamMonitoringScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-                controller: roleController,
-                decoration: const InputDecoration(labelText: "Role")),
+              controller: roleController,
+              decoration: const InputDecoration(labelText: "Role"),
+            ),
             TextField(
-                controller: skillController,
-                decoration: const InputDecoration(
-                    labelText: "Skills (Comma separated)")),
+              controller: skillController,
+              decoration: const InputDecoration(
+                labelText: "Skills (Comma separated)",
+              ),
+            ),
             TextField(
-                controller: capacityController,
-                decoration:
-                    const InputDecoration(labelText: "Weekly Capacity (Hours)"),
-                keyboardType: TextInputType.number),
+              controller: capacityController,
+              decoration: const InputDecoration(
+                labelText: "Weekly Capacity (Hours)",
+              ),
+              keyboardType: TextInputType.number,
+            ),
           ],
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () async {
               final updatedEmp = emp.copyWith(
@@ -2038,21 +2479,29 @@ class _TeamMonitoringScreen extends StatelessWidget {
               if (context.mounted) Navigator.pop(context);
             },
             child: const Text("Save"),
-          )
+          ),
         ],
       ),
     );
   }
 
   void _confirmRemoveEmployee(
-      BuildContext context, AdminViewModel vm, UserModel emp) {
+    BuildContext context,
+    AdminViewModel vm,
+    UserModel emp,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Remove Employee"),
-        content: Text("Are you sure you want to remove ${emp.name} from the company?"),
+        content: Text(
+          "Are you sure you want to remove ${emp.name} from the company?",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           TextButton(
             onPressed: () async {
               await vm.removeEmployee(emp);
@@ -2066,48 +2515,60 @@ class _TeamMonitoringScreen extends StatelessWidget {
   }
 }
 
-class EmployeeAnalyticsScreen extends StatelessWidget{
+class EmployeeAnalyticsScreen extends StatelessWidget {
   final UserModel employee;
-  const EmployeeAnalyticsScreen({super.key,required this.employee});
+  const EmployeeAnalyticsScreen({super.key, required this.employee});
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     final vm = Provider.of<AdminViewModel>(context);
     return Scaffold(
-      appBar:  AppBar(title: Text("${employee.name}'s Analytics"),),
-      body: StreamBuilder<List<TaskModel>>(stream: vm.tasksStream, builder: (context,snapshot){
-        if(!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        
-        final stats = vm.calculateEmployeeStats(employee.userId, snapshot.data!);
-        
-        if (stats['total'] == 0) {
-          return const Center(
+      appBar: AppBar(title: Text("${employee.name}'s Analytics")),
+      body: StreamBuilder<List<TaskModel>>(
+        stream: vm.tasksStream,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
+
+          final stats = vm.calculateEmployeeStats(
+            employee.userId,
+            snapshot.data!,
+          );
+
+          if (stats['total'] == 0) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.analytics_outlined, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    "No tasks assigned to this member yet.",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.analytics_outlined, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text("No tasks assigned to this member yet.", 
-                  style: TextStyle(color: Colors.grey, fontSize: 16)),
+                _buildStatCards(stats),
+                const SizedBox(height: 30),
+                const Text(
+                  "Task Distribution",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                _buildPieChart(stats),
+                const SizedBox(height: 30),
+                _buildTaskList(stats['tasks']),
               ],
             ),
           );
-        }
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _buildStatCards(stats),
-              const SizedBox(height: 30),
-              const Text("Task Distribution", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              _buildPieChart(stats),
-              const SizedBox(height: 30),
-              _buildTaskList(stats['tasks']),
-            ],
-          ),
-        );
-      }),
+        },
+      ),
     );
   }
 }
@@ -2115,7 +2576,11 @@ class EmployeeAnalyticsScreen extends StatelessWidget{
 Widget _buildStatCards(Map<String, dynamic> stats) {
   return Row(
     children: [
-      _statCard("Completion", "${stats['completionRate'].toStringAsFixed(1)}%", Colors.green),
+      _statCard(
+        "Completion",
+        "${stats['completionRate'].toStringAsFixed(1)}%",
+        Colors.green,
+      ),
       const SizedBox(width: 12),
       _statCard("Total Tasks", "${stats['total']}", Colors.blue),
     ],
@@ -2132,13 +2597,21 @@ Widget _statCard(String label, String value, Color color) {
       ),
       child: Column(
         children: [
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
           Text(label, style: const TextStyle(color: Colors.grey)),
         ],
       ),
     ),
   );
 }
+
 Widget _buildPieChart(Map<String, dynamic> stats) {
   final double completed = (stats['completed'] ?? 0).toDouble();
   final double inProgress = (stats['inProgress'] ?? 0).toDouble();
@@ -2157,35 +2630,59 @@ Widget _buildPieChart(Map<String, dynamic> stats) {
       PieChartData(
         sections: [
           if (completed > 0)
-            PieChartSectionData(value: completed, color: Colors.green, title: 'Done'),
+            PieChartSectionData(
+              value: completed,
+              color: Colors.green,
+              title: 'Done',
+            ),
           if (inProgress > 0)
-            PieChartSectionData(value: inProgress, color: Colors.orange, title: 'Doing'),
+            PieChartSectionData(
+              value: inProgress,
+              color: Colors.orange,
+              title: 'Doing',
+            ),
           if (pending > 0)
-            PieChartSectionData(value: pending, color: Colors.red, title: 'To-Do'),
+            PieChartSectionData(
+              value: pending,
+              color: Colors.red,
+              title: 'To-Do',
+            ),
         ],
       ),
     ),
   );
 }
+
 Widget _buildTaskList(List<TaskModel> tasks) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text("Detailed Log", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      const Text(
+        "Detailed Log",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
       const SizedBox(height: 10),
-      ...tasks.map((t) => ListTile(
-        leading: const Icon(Icons.circle, size: 12),
-        title: Text(t.title),
-        trailing: Text(t.status, style: const TextStyle(fontWeight: FontWeight.bold)),
-      )).toList(),
+      ...tasks
+          .map(
+            (t) => ListTile(
+              leading: const Icon(Icons.circle, size: 12),
+              title: Text(t.title),
+              trailing: Text(
+                t.status,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          )
+          .toList(),
     ],
   );
 }
 
-
-
-void _showAISuggestionsDialog(BuildContext context,
-    List<Map<String, dynamic>> suggestions, Function(String) onSelect) {
+void _showAISuggestionsDialog(
+  BuildContext context,
+  List<Map<String, dynamic>> suggestions,
+  Function(String) onSelect,
+) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
@@ -2211,8 +2708,10 @@ void _showAISuggestionsDialog(BuildContext context,
                 title: Text(s['name'] ?? "Unknown"),
                 subtitle: Text(s['reason'] ?? ""),
                 trailing: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -2220,7 +2719,9 @@ void _showAISuggestionsDialog(BuildContext context,
                   child: Text(
                     "Match: $matchLevel/10",
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.blue),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
                   ),
                 ),
                 onTap: () {
@@ -2234,8 +2735,9 @@ void _showAISuggestionsDialog(BuildContext context,
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close")),
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Close"),
+        ),
       ],
     ),
   );

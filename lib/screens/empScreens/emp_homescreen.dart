@@ -5,6 +5,7 @@ import '../../models/task_model.dart';
 import '../../models/user_model.dart';
 import '../../models/feedback_model.dart';
 import '../../services/ai_service.dart';
+import '../../services/calendar_service.dart';
 import '../../viewmodels/employee_viewmodel.dart';
 import '../login_screen.dart';
 
@@ -75,41 +76,56 @@ class _EmpHomescreenState extends State<EmpHomescreen> {
                 },
                 onLogout: () => _logout(context, viewModel),
               ),
-              body: IndexedStack(
-                index: _selectedIndex,
-                children: [
-                  _EmployeeOverviewTab(
-                    user: user,
-                    tasks: tasks,
-                    isLoading: isLoadingTasks,
-                    onOpenTasks: () => setState(() => _selectedIndex = 1),
-                    onStatusChanged: viewModel.updateTaskStatus,
+              body: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.02, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey(_selectedIndex),
+                  child: IndexedStack(
+                    index: _selectedIndex,
+                    children: [
+                      _EmployeeOverviewTab(
+                        user: user,
+                        tasks: tasks,
+                        isLoading: isLoadingTasks,
+                        onOpenTasks: () => setState(() => _selectedIndex = 1),
+                        onStatusChanged: viewModel.updateTaskStatus,
+                      ),
+                      _EmployeeTasksTab(
+                        tasks: tasks,
+                        isLoading: isLoadingTasks,
+                        onStatusChanged: viewModel.updateTaskStatus,
+                      ),
+                      _EmployeeScheduleTab(
+                        tasks: tasks,
+                        isLoading: isLoadingTasks,
+                        onStatusChanged: viewModel.updateTaskStatus,
+                      ),
+                      _EmployeeTeamSlotsTab(user: user, viewModel: viewModel),
+                      _EmployeeFeedbackTab(user: user, viewModel: viewModel),
+                      _EmployeeProfileTab(
+                        user: user,
+                        tasks: tasks,
+                        onSave: viewModel.updateProfile,
+                        onRecordPerformance:
+                            viewModel.recordPerformanceSnapshot,
+                      ),
+                    ],
                   ),
-                  _EmployeeTasksTab(
-                    tasks: tasks,
-                    isLoading: isLoadingTasks,
-                    onStatusChanged: viewModel.updateTaskStatus,
-                  ),
-                  _EmployeeScheduleTab(
-                    tasks: tasks,
-                    isLoading: isLoadingTasks,
-                    onStatusChanged: viewModel.updateTaskStatus,
-                  ),
-                  _EmployeeTeamSlotsTab(
-                    user: user,
-                    viewModel: viewModel,
-                  ),
-                  _EmployeeFeedbackTab(
-                    user: user,
-                    viewModel: viewModel,
-                  ),
-                  _EmployeeProfileTab(
-                    user: user,
-                    tasks: tasks,
-                    onSave: viewModel.updateProfile,
-                    onRecordPerformance: viewModel.recordPerformanceSnapshot,
-                  ),
-                ],
+                ),
               ),
             );
           },
@@ -119,6 +135,26 @@ class _EmpHomescreenState extends State<EmpHomescreen> {
   }
 
   Future<void> _logout(BuildContext context, EmployeeViewModel vm) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Logout"),
+        content: const Text("Do you want to end this employee session?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.logout),
+            label: const Text("Logout"),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true || !context.mounted) return;
     await vm.logout();
     if (!context.mounted) return;
     Navigator.pushReplacement(
@@ -198,7 +234,11 @@ class _EmployeeSidePanel extends StatelessWidget {
                 _panelTile(context, Icons.dashboard_outlined, "Overview", 0),
                 _panelTile(context, Icons.assignment_outlined, "My Tasks", 1),
                 _panelTile(
-                    context, Icons.calendar_month_outlined, "Schedule", 2),
+                  context,
+                  Icons.calendar_month_outlined,
+                  "Schedule",
+                  2,
+                ),
                 _panelTile(context, Icons.groups_outlined, "Team Slots", 3),
                 _panelTile(context, Icons.feedback_outlined, "Feedback", 4),
                 _panelTile(context, Icons.person_outline, "Profile", 5),
@@ -218,7 +258,11 @@ class _EmployeeSidePanel extends StatelessWidget {
   }
 
   Widget _panelTile(
-      BuildContext context, IconData icon, String title, int index) {
+    BuildContext context,
+    IconData icon,
+    String title,
+    int index,
+  ) {
     final selected = selectedIndex == index;
     return ListTile(
       selected: selected,
@@ -251,7 +295,9 @@ class _EmployeeOverviewTab extends StatelessWidget {
     final pending = tasks.where((t) => t.status == "Pending").length;
     final active = tasks.where((t) => t.status == "In Progress").length;
     final completed = tasks.where((t) => t.status == "Completed").length;
-    final nextTasks = [...tasks]..sort((a, b) => a.endTime.compareTo(b.endTime));
+    final workload = _calculateWorkloadPercentage(user, tasks);
+    final nextTasks = [...tasks]
+      ..sort((a, b) => a.endTime.compareTo(b.endTime));
 
     return RefreshIndicator(
       onRefresh: () async {},
@@ -259,7 +305,7 @@ class _EmployeeOverviewTab extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          _WelcomeBand(user: user),
+          _WelcomeBand(user: user, workloadPercentage: workload),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -286,7 +332,7 @@ class _EmployeeOverviewTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _WorkloadCard(user: user),
+          _WorkloadCard(user: user, workloadPercentage: workload),
           const SizedBox(height: 20),
           _SectionHeader(
             title: "Priority Queue",
@@ -310,11 +356,13 @@ class _EmployeeOverviewTab extends StatelessWidget {
           else
             ...nextTasks
                 .take(3)
-                .map((task) => _TaskCard(
-                      task: task,
-                      compact: true,
-                      onStatusChanged: onStatusChanged,
-                    ))
+                .map(
+                  (task) => _TaskCard(
+                    task: task,
+                    compact: true,
+                    onStatusChanged: onStatusChanged,
+                  ),
+                )
                 .toList(),
           const SizedBox(height: 8),
           Text(
@@ -375,19 +423,19 @@ class _EmployeeTasksTabState extends State<_EmployeeTasksTab> {
           child: widget.isLoading
               ? const Center(child: CircularProgressIndicator())
               : filteredTasks.isEmpty
-                  ? _EmptyState(
-                      icon: Icons.assignment_outlined,
-                      title: "Nothing in $_statusFilter",
-                      message: "Try another status filter.",
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      itemCount: filteredTasks.length,
-                      itemBuilder: (context, index) => _TaskCard(
-                        task: filteredTasks[index],
-                        onStatusChanged: widget.onStatusChanged,
-                      ),
-                    ),
+              ? _EmptyState(
+                  icon: Icons.assignment_outlined,
+                  title: "Nothing in $_statusFilter",
+                  message: "Try another status filter.",
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  itemCount: filteredTasks.length,
+                  itemBuilder: (context, index) => _TaskCard(
+                    task: filteredTasks[index],
+                    onStatusChanged: widget.onStatusChanged,
+                  ),
+                ),
         ),
       ],
     );
@@ -426,23 +474,27 @@ class _EmployeeScheduleTab extends StatelessWidget {
     final items = <Widget>[];
 
     for (final task in scheduledTasks) {
-      final taskDay = DateTime(task.startTime.year, task.startTime.month,
-          task.startTime.day);
+      final taskDay = DateTime(
+        task.startTime.year,
+        task.startTime.month,
+        task.startTime.day,
+      );
       if (activeDay != taskDay) {
         activeDay = taskDay;
-        items.add(Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-          child: Text(
-            _formatDateLabel(task.startTime),
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        items.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+            child: Text(
+              _formatDateLabel(task.startTime),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
           ),
-        ));
+        );
       }
 
-      items.add(_TimelineTaskTile(
-        task: task,
-        onStatusChanged: onStatusChanged,
-      ));
+      items.add(
+        _TimelineTaskTile(task: task, onStatusChanged: onStatusChanged),
+      );
     }
 
     return ListView(
@@ -453,10 +505,7 @@ class _EmployeeScheduleTab extends StatelessWidget {
 }
 
 class _EmployeeTeamSlotsTab extends StatefulWidget {
-  const _EmployeeTeamSlotsTab({
-    required this.user,
-    required this.viewModel,
-  });
+  const _EmployeeTeamSlotsTab({required this.user, required this.viewModel});
 
   final UserModel user;
   final EmployeeViewModel viewModel;
@@ -478,10 +527,11 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final members = (memberSnapshot.data ?? [])
-            .where((member) => member.role != "SuperAdmin")
-            .toList()
-          ..sort((a, b) => a.name.compareTo(b.name));
+        final members =
+            (memberSnapshot.data ?? [])
+                .where((member) => member.role != "SuperAdmin")
+                .toList()
+              ..sort((a, b) => a.name.compareTo(b.name));
 
         if (members.isEmpty) {
           return const _EmptyState(
@@ -546,8 +596,9 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
                       tooltip: "Previous day",
                       onPressed: () {
                         setState(() {
-                          _selectedDate =
-                              _selectedDate.subtract(const Duration(days: 1));
+                          _selectedDate = _selectedDate.subtract(
+                            const Duration(days: 1),
+                          );
                         });
                       },
                       icon: const Icon(Icons.chevron_left),
@@ -567,8 +618,9 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
                       tooltip: "Next day",
                       onPressed: () {
                         setState(() {
-                          _selectedDate =
-                              _selectedDate.add(const Duration(days: 1));
+                          _selectedDate = _selectedDate.add(
+                            const Duration(days: 1),
+                          );
                         });
                       },
                       icon: const Icon(Icons.chevron_right),
@@ -603,12 +655,12 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
                       tasks: slotTasks,
                       onTap: slotTasks.isEmpty
                           ? () => _showAssignTaskDialog(
-                                context,
-                                members,
-                                selectedMember: selectedMember,
-                                startTime: slotStart,
-                                endTime: slotEnd,
-                              )
+                              context,
+                              members,
+                              selectedMember: selectedMember,
+                              startTime: slotStart,
+                              endTime: slotEnd,
+                            )
                           : () => _showSlotTasks(context, slotTasks),
                     );
                   }),
@@ -628,11 +680,13 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
     final dayStart = DateTime(date.year, date.month, date.day);
     final dayEnd = dayStart.add(const Duration(days: 1));
     return tasks
-        .where((task) =>
-            task.assignedTo == userId &&
-            task.status != "Completed" &&
-            task.startTime.isBefore(dayEnd) &&
-            task.endTime.isAfter(dayStart))
+        .where(
+          (task) =>
+              task.assignedTo == userId &&
+              task.status != "Completed" &&
+              task.startTime.isBefore(dayEnd) &&
+              task.endTime.isAfter(dayStart),
+        )
         .toList()
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
   }
@@ -685,7 +739,8 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
     String assignedTo = selectedMember?.userId ?? members.first.userId;
     DateTime selectedStart =
         startTime ?? DateTime.now().add(const Duration(hours: 1));
-    DateTime selectedEnd = endTime ?? selectedStart.add(const Duration(hours: 1));
+    DateTime selectedEnd =
+        endTime ?? selectedStart.add(const Duration(hours: 1));
 
     showDialog(
       context: context,
@@ -735,17 +790,17 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
                         icon: const Icon(Icons.auto_awesome, size: 18),
                         label: const Text("AI Suggest"),
                         onPressed: () async {
-                          final suggestions =
-                              await AiService().getSmartSuggestions(
-                            requiredSkills: skillsController.text
-                                .split(",")
-                                .map((skill) => skill.trim())
-                                .where((skill) => skill.isNotEmpty)
-                                .toList(),
-                            priority: priority,
-                            deadline: selectedEnd,
-                            employees: members,
-                          );
+                          final suggestions = await AiService()
+                              .getSmartSuggestions(
+                                requiredSkills: skillsController.text
+                                    .split(",")
+                                    .map((skill) => skill.trim())
+                                    .where((skill) => skill.isNotEmpty)
+                                    .toList(),
+                                priority: priority,
+                                deadline: selectedEnd,
+                                employees: members,
+                              );
                           if (suggestions.isNotEmpty && context.mounted) {
                             _showEmployeeAISuggestionsDialog(
                               context,
@@ -786,8 +841,12 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
                   DropdownButtonFormField<String>(
                     value: priority,
                     items: ["Low", "Medium", "High", "Critical"]
-                        .map((value) =>
-                            DropdownMenuItem(value: value, child: Text(value)))
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) {
                       if (value != null) {
@@ -805,13 +864,17 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
                     ),
                     trailing: const Icon(Icons.event_outlined),
                     onTap: () async {
-                      final picked = await _pickDateTime(context, selectedStart);
+                      final picked = await _pickDateTime(
+                        context,
+                        selectedStart,
+                      );
                       if (picked == null) return;
                       setDialogState(() {
                         selectedStart = picked;
                         if (!selectedEnd.isAfter(selectedStart)) {
-                          selectedEnd =
-                              selectedStart.add(const Duration(hours: 1));
+                          selectedEnd = selectedStart.add(
+                            const Duration(hours: 1),
+                          );
                         }
                       });
                     },
@@ -872,9 +935,9 @@ class _EmployeeTeamSlotsTabState extends State<_EmployeeTeamSlotsTab> {
                     const SnackBar(content: Text("Task assigned successfully")),
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(result)),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(result)));
                 }
               },
               child: const Text("Assign"),
@@ -969,8 +1032,9 @@ class _TeamSlotTile extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color:
-                            Theme.of(context).colorScheme.onSurface.withOpacity(0.64),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.64),
                       ),
                     ),
                   ],
@@ -1036,10 +1100,7 @@ void _showEmployeeAISuggestionsDialog(
 }
 
 class _EmployeeFeedbackTab extends StatelessWidget {
-  const _EmployeeFeedbackTab({
-    required this.user,
-    required this.viewModel,
-  });
+  const _EmployeeFeedbackTab({required this.user, required this.viewModel});
 
   final UserModel user;
   final EmployeeViewModel viewModel;
@@ -1087,8 +1148,10 @@ class _EmployeeFeedbackTab extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text("${item.rating}/5"),
-                          Text(item.status,
-                              style: const TextStyle(fontSize: 11)),
+                          Text(
+                            item.status,
+                            style: const TextStyle(fontSize: 11),
+                          ),
                         ],
                       ),
                     ),
@@ -1118,8 +1181,10 @@ class _EmployeeFeedbackTab extends StatelessWidget {
               DropdownButtonFormField<String>(
                 value: category,
                 items: ["Product", "Workload", "Task Assignment", "Support"]
-                    .map((item) =>
-                        DropdownMenuItem(value: item, child: Text(item)))
+                    .map(
+                      (item) =>
+                          DropdownMenuItem(value: item, child: Text(item)),
+                    )
                     .toList(),
                 onChanged: (value) {
                   if (value != null) setDialogState(() => category = value);
@@ -1130,10 +1195,12 @@ class _EmployeeFeedbackTab extends StatelessWidget {
               DropdownButtonFormField<int>(
                 value: rating,
                 items: [1, 2, 3, 4, 5]
-                    .map((item) => DropdownMenuItem(
-                          value: item,
-                          child: Text("$item / 5"),
-                        ))
+                    .map(
+                      (item) => DropdownMenuItem(
+                        value: item,
+                        child: Text("$item / 5"),
+                      ),
+                    )
                     .toList(),
                 onChanged: (value) {
                   if (value != null) setDialogState(() => rating = value);
@@ -1192,13 +1259,15 @@ class _EmployeeProfileTab extends StatelessWidget {
     required int typedCharacters,
     required int correctionCount,
     required int taskSwitches,
-  }) onRecordPerformance;
+  })
+  onRecordPerformance;
 
   @override
   Widget build(BuildContext context) {
     final completed = tasks.where((task) => task.status == "Completed").length;
-    final completionRate =
-        tasks.isEmpty ? 0.0 : (completed / tasks.length) * 100;
+    final completionRate = tasks.isEmpty
+        ? 0.0
+        : (completed / tasks.length) * 100;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -1228,11 +1297,7 @@ class _EmployeeProfileTab extends StatelessWidget {
           title: "Employee ID",
           value: user.empId.isEmpty ? "Not assigned" : user.empId,
         ),
-        _InfoTile(
-          icon: Icons.mail_outline,
-          title: "Email",
-          value: user.email,
-        ),
+        _InfoTile(icon: Icons.mail_outline, title: "Email", value: user.email),
         _InfoTile(
           icon: Icons.business_outlined,
           title: "Company",
@@ -1256,7 +1321,9 @@ class _EmployeeProfileTab extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: user.skills.map((skill) => Chip(label: Text(skill))).toList(),
+            children: user.skills
+                .map((skill) => Chip(label: Text(skill)))
+                .toList(),
           ),
         const SizedBox(height: 20),
         _SectionHeader(
@@ -1276,9 +1343,12 @@ class _EmployeeProfileTab extends StatelessWidget {
   }
 
   void _showEditProfileDialog(BuildContext context) {
-    final skillsController = TextEditingController(text: user.skills.join(", "));
-    final capacityController =
-        TextEditingController(text: user.maxCapacityHoursPerWeek.toString());
+    final skillsController = TextEditingController(
+      text: user.skills.join(", "),
+    );
+    final capacityController = TextEditingController(
+      text: user.maxCapacityHoursPerWeek.toString(),
+    );
 
     showDialog(
       context: context,
@@ -1319,7 +1389,7 @@ class _EmployeeProfileTab extends StatelessWidget {
                     .toList(),
                 maxCapacityHoursPerWeek:
                     double.tryParse(capacityController.text.trim()) ??
-                        user.maxCapacityHoursPerWeek,
+                    user.maxCapacityHoursPerWeek,
               );
               await onSave(updatedUser);
               if (context.mounted) Navigator.pop(context);
@@ -1348,8 +1418,9 @@ class _EmployeeProfileTab extends StatelessWidget {
             children: [
               TextField(
                 controller: screenController,
-                decoration:
-                    const InputDecoration(labelText: "App screen minutes"),
+                decoration: const InputDecoration(
+                  labelText: "App screen minutes",
+                ),
                 keyboardType: TextInputType.number,
               ),
               TextField(
@@ -1359,8 +1430,7 @@ class _EmployeeProfileTab extends StatelessWidget {
               ),
               TextField(
                 controller: typedController,
-                decoration:
-                    const InputDecoration(
+                decoration: const InputDecoration(
                   labelText: "App keystroke count",
                   hintText: "Count only, no typed text",
                 ),
@@ -1412,9 +1482,10 @@ class _EmployeeProfileTab extends StatelessWidget {
 }
 
 class _WelcomeBand extends StatelessWidget {
-  const _WelcomeBand({required this.user});
+  const _WelcomeBand({required this.user, required this.workloadPercentage});
 
   final UserModel user;
+  final double workloadPercentage;
 
   @override
   Widget build(BuildContext context) {
@@ -1440,7 +1511,7 @@ class _WelcomeBand extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            "Your workload is ${user.currentWorkloadPercentage.toStringAsFixed(0)}% today.",
+            "Your active task load is ${workloadPercentage.toStringAsFixed(0)}% of weekly capacity.",
             style: TextStyle(
               color: colorScheme.onPrimaryContainer.withOpacity(0.76),
               fontSize: 15,
@@ -1492,7 +1563,9 @@ class _MetricCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.62),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.62),
                 fontSize: 12,
               ),
             ),
@@ -1504,19 +1577,19 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _WorkloadCard extends StatelessWidget {
-  const _WorkloadCard({required this.user});
+  const _WorkloadCard({required this.user, required this.workloadPercentage});
 
   final UserModel user;
+  final double workloadPercentage;
 
   @override
   Widget build(BuildContext context) {
-    final load =
-        (user.currentWorkloadPercentage / 100).clamp(0.0, 1.0).toDouble();
+    final load = (workloadPercentage / 100).clamp(0.0, 1.0).toDouble();
     final color = load >= 0.85
         ? Colors.red
         : load >= 0.65
-            ? Colors.orange
-            : Colors.green;
+        ? Colors.orange
+        : Colors.green;
 
     return Card(
       child: Padding(
@@ -1534,7 +1607,7 @@ class _WorkloadCard extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                Text("${user.currentWorkloadPercentage.toStringAsFixed(0)}%"),
+                Text("${workloadPercentage.toStringAsFixed(0)}%"),
               ],
             ),
             const SizedBox(height: 12),
@@ -1551,7 +1624,9 @@ class _WorkloadCard extends StatelessWidget {
             Text(
               "Weekly capacity: ${user.maxCapacityHoursPerWeek.toStringAsFixed(0)} hours",
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.64),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.64),
               ),
             ),
           ],
@@ -1629,8 +1704,10 @@ class _TaskCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(99),
@@ -1712,6 +1789,32 @@ class _TaskCard extends StatelessWidget {
                 title: "Reviewer feedback",
                 value: task.reviewerFeedback,
               ),
+            _InfoTile(
+              icon: Icons.auto_awesome_outlined,
+              title: "AI follow-up",
+              value: AiService().taskFollowUp(task),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final opened = await CalendarService().openGoogleCalendar(
+                    task,
+                  );
+                  if (!context.mounted || opened) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Google Calendar link copied. Paste it in a browser to add this task.",
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.calendar_month_outlined),
+                label: const Text("Add to Google Calendar"),
+              ),
+            ),
           ],
         ),
       ),
@@ -1777,10 +1880,7 @@ class _TaskCard extends StatelessWidget {
 }
 
 class _TimelineTaskTile extends StatelessWidget {
-  const _TimelineTaskTile({
-    required this.task,
-    required this.onStatusChanged,
-  });
+  const _TimelineTaskTile({required this.task, required this.onStatusChanged});
 
   final TaskModel task;
   final Future<void> Function(TaskModel task, String status) onStatusChanged;
@@ -1808,11 +1908,7 @@ class _TimelineTaskTile extends StatelessWidget {
                 height: 14,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
-              Container(
-                width: 2,
-                height: 72,
-                color: color.withOpacity(0.22),
-              ),
+              Container(width: 2, height: 72, color: color.withOpacity(0.22)),
             ],
           ),
           const SizedBox(width: 12),
@@ -1832,8 +1928,9 @@ class _TimelineTaskTile extends StatelessWidget {
                     Text(
                       "${_formatTime(task.startTime)} - ${_formatTime(task.endTime)}",
                       style: TextStyle(
-                        color:
-                            Theme.of(context).colorScheme.onSurface.withOpacity(0.62),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.62),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1853,10 +1950,7 @@ class _TimelineTaskTile extends StatelessWidget {
 }
 
 class _StatusMenu extends StatelessWidget {
-  const _StatusMenu({
-    required this.status,
-    required this.onChanged,
-  });
+  const _StatusMenu({required this.status, required this.onChanged});
 
   final String status;
   final ValueChanged<String> onChanged;
@@ -1867,10 +1961,11 @@ class _StatusMenu extends StatelessWidget {
       "Pending",
       "In Progress",
       "Submitted",
-      "Completed"
+      "Completed",
     ];
-    final selectedStatus =
-        allowedStatuses.contains(status) ? status : allowedStatuses.first;
+    final selectedStatus = allowedStatuses.contains(status)
+        ? status
+        : allowedStatuses.first;
 
     return DropdownButton<String>(
       value: selectedStatus,
@@ -1883,9 +1978,7 @@ class _StatusMenu extends StatelessWidget {
           child: Text(
             value,
             style: TextStyle(
-              color: value == "Completed"
-                  ? Colors.grey
-                  : _statusColor(value),
+              color: value == "Completed" ? Colors.grey : _statusColor(value),
               fontWeight: FontWeight.bold,
               fontSize: 12,
             ),
@@ -2009,10 +2102,7 @@ class _InfoTile extends StatelessWidget {
 }
 
 class _IconText extends StatelessWidget {
-  const _IconText({
-    required this.icon,
-    required this.label,
-  });
+  const _IconText({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -2024,21 +2114,14 @@ class _IconText extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: Colors.grey),
         const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.grey, fontSize: 12),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
       ],
     );
   }
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    this.actionLabel,
-    this.onAction,
-  });
+  const _SectionHeader({required this.title, this.actionLabel, this.onAction});
 
   final String title;
   final String? actionLabel;
@@ -2133,7 +2216,7 @@ String _formatDateLabel(DateTime dateTime) {
     "Sep",
     "Oct",
     "Nov",
-    "Dec"
+    "Dec",
   ];
   final today = DateTime.now();
   final date = DateTime(dateTime.year, dateTime.month, dateTime.day);
@@ -2179,4 +2262,22 @@ Color _priorityColor(String priority) {
     default:
       return Colors.blueGrey;
   }
+}
+
+double _calculateWorkloadPercentage(UserModel user, List<TaskModel> tasks) {
+  final capacityMinutes =
+      (user.maxCapacityHoursPerWeek <= 0 ? 40 : user.maxCapacityHoursPerWeek) *
+      60;
+  final activeMinutes = tasks
+      .where(
+        (task) => task.assignedTo == user.userId && task.status != "Completed",
+      )
+      .fold<int>(0, (total, task) {
+        if (task.estimatedDurationMinutes > 0) {
+          return total + task.estimatedDurationMinutes;
+        }
+        final minutes = task.endTime.difference(task.startTime).inMinutes;
+        return total + minutes.clamp(0, 24 * 60);
+      });
+  return (activeMinutes / capacityMinutes * 100).clamp(0, 100).toDouble();
 }

@@ -18,6 +18,7 @@ class AiAnalyticsChatbot extends StatefulWidget {
 
 class _AiAnalyticsChatbotState extends State<AiAnalyticsChatbot> {
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
   final _messages = <_ChatMessage>[
     const _ChatMessage(
       sender: "AIQ",
@@ -31,6 +32,7 @@ class _AiAnalyticsChatbotState extends State<AiAnalyticsChatbot> {
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -40,15 +42,19 @@ class _AiAnalyticsChatbotState extends State<AiAnalyticsChatbot> {
       children: [
         Expanded(
           child: ListView.builder(
+            controller: _scrollController,
             padding: const EdgeInsets.all(16),
             itemCount: _messages.length,
             itemBuilder: (context, index) {
               final message = _messages[index];
               return Align(
-                alignment:
-                    message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: message.isUser
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: Container(
-                  constraints: const BoxConstraints(maxWidth: 520),
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width * 0.72,
+                  ),
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -57,7 +63,7 @@ class _AiAnalyticsChatbotState extends State<AiAnalyticsChatbot> {
                         : Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Text(
+                  child: SelectableText(
                     message.text,
                     style: TextStyle(
                       color: message.isUser
@@ -108,6 +114,7 @@ class _AiAnalyticsChatbotState extends State<AiAnalyticsChatbot> {
       _controller.clear();
       _isThinking = true;
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     final answer = await AiService().askAnalytics(
       question: question,
@@ -120,6 +127,16 @@ class _AiAnalyticsChatbotState extends State<AiAnalyticsChatbot> {
       _messages.add(_ChatMessage(sender: "AIQ", text: answer, isUser: false));
       _isThinking = false;
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  void _scrollToBottom() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
   }
 }
 

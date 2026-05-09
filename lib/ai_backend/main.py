@@ -5,6 +5,19 @@ from datetime import datetime, timezone
 
 app = FastAPI(title="AIQ Smart Scheduler Engine")
 
+def skill_tokens(value: str) -> set[str]:
+    cleaned = "".join(ch.lower() if ch.isalnum() or ch in {"+", "#", "."} else " " for ch in value)
+    tokens = {part.strip() for part in cleaned.split() if part.strip()}
+    if "django" in cleaned:
+        tokens.update({"django", "python"})
+    if "flutter" in cleaned:
+        tokens.update({"flutter", "dart"})
+    if "firebase" in cleaned:
+        tokens.update({"firebase", "firestore"})
+    if "sql" in cleaned:
+        tokens.add("sql")
+    return tokens
+
 class Employee(BaseModel):
     userId: str
     name: str
@@ -40,6 +53,16 @@ class PerformanceSignal(BaseModel):
     keystrokesPerHour: float = 0
     workloadPercentage: float = 0
 
+class TaskFollowUpSignal(BaseModel):
+    taskId: str
+    title: str
+    status: str
+    basePriority: str
+    endTime: datetime
+    submissionNote: str = ""
+    submissionLink: str = ""
+    reviewerFeedback: str = ""
+
 @app.get("/")
 async def root():
     return {"status": "AI Engine is online"}
@@ -56,18 +79,20 @@ async def suggest_employee(task: TaskContext, employees: List[Employee]):
             print(f"Skipping {emp.name} (Not Available)")
             continue
 
-        # 1. Skill Match (Max 100 points)
-        # We use lowercase comparison and check if the required skill is contained in any employee skill
-        required = [s.lower().strip() for s in task.requiredSkills]
-        owned = [s.lower().strip() for s in emp.skills]
+        required = set()
+        for skill in task.requiredSkills:
+            required.update(skill_tokens(skill))
+        owned = set()
+        for skill in emp.skills:
+            owned.update(skill_tokens(skill))
 
-        match_count = 0
         if required:
-            for req_skill in required:
-                # Direct match or partial match
-                if any(req_skill in o or o in req_skill for o in owned):
-                    match_count += 1
-            skill_score = (match_count / len(required)) * 100
+            exact_count = len(required.intersection(owned))
+            fuzzy_count = sum(
+                1 for req_skill in required
+                if any(req_skill in owned_skill or owned_skill in req_skill for owned_skill in owned)
+            )
+            skill_score = min(100, ((exact_count + max(0, fuzzy_count - exact_count) * 0.45) / len(required)) * 100)
         else:
             skill_score = 100 # No skills required, everyone matches
 
@@ -117,6 +142,28 @@ async def suggest_employee(task: TaskContext, employees: List[Employee]):
 
 @app.post("/analytics-rag")
 async def analytics_rag(payload: AnalyticsQuestion):
+    lower_question = payload.question.lower()
+    known_skills = {"django", "flutter", "firebase", "python", "sql", "ml", "ai", "dart", "java", "react", "node"}
+    requested_skill = next((skill for skill in known_skills if skill in lower_question), None)
+    if requested_skill and any(word in lower_question for word in ["skill", "skills", "employee", "employees", "list", "who"]):
+        wanted = skill_tokens(requested_skill)
+        matches = []
+        for doc in payload.documents:
+            if doc.metadata.get("type") != "employee":
+                continue
+            haystack = f"{doc.title} {doc.content}"
+            if wanted.intersection(skill_tokens(haystack)):
+                matches.append(doc.title.replace("Employee ", ""))
+        if matches:
+            return {
+                "answer": f"Employees matching {requested_skill}: {', '.join(matches)}.",
+                "sources": [{"title": f"Employee {name}", "metadata": {"type": "employee"}} for name in matches]
+            }
+        return {
+            "answer": f"No employees with {requested_skill} were found in the current analytics data.",
+            "sources": []
+        }
+
     question_terms = {
         term.strip().lower()
         for term in payload.question.replace("?", " ").replace(",", " ").split()
@@ -186,3 +233,45 @@ async def performance_insights(signals: List[PerformanceSignal]):
 
     insights.sort(key=lambda item: item["efficiencyScore"], reverse=True)
     return insights
+
+@app.post("/task-followups")
+async def task_followups(tasks: List[TaskFollowUpSignal]):
+    followups = []
+    now = datetime.now(timezone.utc)
+
+    for task in tasks:
+        task_end = task.endTime.replace(tzinfo=timezone.utc) if task.endTime.tzinfo is None else task.endTime
+        hours_to_deadline = (task_end - now).total_seconds() / 3600
+        status = task.status.lower().strip()
+        priority = task.basePriority.lower().strip()
+
+        risk = "Normal"
+        if status != "completed" and hours_to_deadline < 0:
+            risk = "Overdue"
+        elif priority in {"critical", "high"} and status in {"pending", "in progress"} and hours_to_deadline < 24:
+            risk = "Needs attention"
+        elif status == "submitted":
+            risk = "Awaiting review"
+
+        if status == "submitted":
+            action = "Review the submission note and proof link, then approve or request rework with concrete feedback."
+        elif risk == "Overdue":
+            action = "Ask for a blocker update, reduce scope if needed, and consider reassignment."
+        elif status == "pending":
+            action = "Confirm the assignee has enough context and a realistic start time."
+        elif status == "in progress":
+            action = "Request a short progress update and validate the delivery window."
+        else:
+            action = "Capture final learnings and keep the assignee available for similar future work."
+
+        followups.append({
+            "taskId": task.taskId,
+            "title": task.title,
+            "risk": risk,
+            "hoursToDeadline": round(hours_to_deadline, 1),
+            "action": action,
+        })
+
+    risk_order = {"Overdue": 0, "Needs attention": 1, "Awaiting review": 2, "Normal": 3}
+    followups.sort(key=lambda item: (risk_order.get(item["risk"], 9), item["hoursToDeadline"]))
+    return followups

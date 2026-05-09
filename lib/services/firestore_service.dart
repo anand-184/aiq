@@ -7,6 +7,7 @@ import '../models/payment_model.dart';
 import '../models/task_model.dart';
 import '../models/user_model.dart';
 import '../models/branch.dart';
+import '../models/calendar_event.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -36,10 +37,10 @@ class FirestoreService {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return PaymentRecord.fromJson(doc.data());
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            return PaymentRecord.fromJson(doc.data());
+          }).toList();
+        });
   }
 
   Future<void> createCompany(Company company) {
@@ -50,7 +51,9 @@ class FirestoreService {
   }
 
   Future<void> updateCompanySettings(
-      String companyId, Map<String, dynamic> settings) {
+    String companyId,
+    Map<String, dynamic> settings,
+  ) {
     return _db.collection('companies').doc(companyId).update({
       'settings': settings,
     });
@@ -75,8 +78,10 @@ class FirestoreService {
         .collection('branches')
         .where('companyName', isEqualTo: companyName)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => Branch.fromJson(doc.data())).toList());
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => Branch.fromJson(doc.data())).toList(),
+        );
   }
 
   Future<void> createBranch(Branch branch) {
@@ -102,8 +107,11 @@ class FirestoreService {
         .collection('users')
         .where('companyId', isEqualTo: companyId)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => UserModel.fromJson(doc.data())).toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => UserModel.fromJson(doc.data()))
+              .toList(),
+        );
   }
 
   // Get tasks for a specific company
@@ -113,13 +121,15 @@ class FirestoreService {
         .where('companyId', isEqualTo: companyId)
         .snapshots()
         .map((snapshot) {
-      final tasks = snapshot.docs
-          .map((doc) => TaskModel.fromJson(doc.data()))
-          .toList();
-      // Sort by dynamic priority descending
-      tasks.sort((a, b) => b.dynamicPriorityScore.compareTo(a.dynamicPriorityScore));
-      return tasks;
-    });
+          final tasks = snapshot.docs
+              .map((doc) => TaskModel.fromJson(doc.data()))
+              .toList();
+          // Sort by dynamic priority descending
+          tasks.sort(
+            (a, b) => b.dynamicPriorityScore.compareTo(a.dynamicPriorityScore),
+          );
+          return tasks;
+        });
   }
 
   Stream<List<TaskModel>> getTasksByAssignee(String userId) {
@@ -128,13 +138,15 @@ class FirestoreService {
         .where('assignedTo', isEqualTo: userId)
         .snapshots()
         .map((snapshot) {
-      final tasks = snapshot.docs
-          .map((doc) => TaskModel.fromJson(doc.data()))
-          .toList();
-      // Sort by dynamic priority descending
-      tasks.sort((a, b) => b.dynamicPriorityScore.compareTo(a.dynamicPriorityScore));
-      return tasks;
-    });
+          final tasks = snapshot.docs
+              .map((doc) => TaskModel.fromJson(doc.data()))
+              .toList();
+          // Sort by dynamic priority descending
+          tasks.sort(
+            (a, b) => b.dynamicPriorityScore.compareTo(a.dynamicPriorityScore),
+          );
+          return tasks;
+        });
   }
 
   Stream<List<PerformanceMetric>> getPerformanceMetrics(String companyId) {
@@ -142,9 +154,11 @@ class FirestoreService {
         .collection('performance_metrics')
         .where('companyId', isEqualTo: companyId)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => PerformanceMetric.fromJson(doc.data()))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => PerformanceMetric.fromJson(doc.data()))
+              .toList(),
+        );
   }
 
   Future<void> recordPerformanceMetric(PerformanceMetric metric) {
@@ -154,14 +168,29 @@ class FirestoreService {
         .set(metric.toJson());
   }
 
+  Future<void> upsertCalendarEventForTask(TaskModel task) {
+    final eventId = task.googleEventId ?? "CAL-${task.taskId}";
+    final event = CalendarEvent(
+      eventId: eventId,
+      companyId: task.companyId,
+      userId: task.assignedTo,
+      startTime: task.startTime,
+      endTime: task.endTime,
+      type: "task",
+      referenceId: task.taskId,
+    );
+    return _db.collection('calendar_events').doc(eventId).set(event.toJson());
+  }
+
   Stream<List<FeedbackModel>> getFeedback({String? companyId}) {
     Query<Map<String, dynamic>> query = _db.collection('feedback');
     if (companyId != null && companyId.isNotEmpty) {
       query = query.where('companyId', isEqualTo: companyId);
     }
     return query.snapshots().map((snapshot) {
-      final feedback =
-          snapshot.docs.map((doc) => FeedbackModel.fromJson(doc.data())).toList();
+      final feedback = snapshot.docs
+          .map((doc) => FeedbackModel.fromJson(doc.data()))
+          .toList();
       feedback.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return feedback;
     });
@@ -184,7 +213,10 @@ class FirestoreService {
 
   /// Checks if the user has any overlapping tasks in the given time range.
   Future<bool> hasOverlappingTask(
-      String userId, DateTime startTime, DateTime endTime) async {
+    String userId,
+    DateTime startTime,
+    DateTime endTime,
+  ) async {
     final snapshot = await _db
         .collection('tasks')
         .where('assignedTo', isEqualTo: userId)
@@ -248,28 +280,38 @@ class FirestoreService {
   Future<String> createTask(TaskModel task) async {
     // 1. Check for overlaps
     bool isOverlapping = await hasOverlappingTask(
-        task.assignedTo, task.startTime, task.endTime);
+      task.assignedTo,
+      task.startTime,
+      task.endTime,
+    );
     if (isOverlapping) {
       return "Error: This employee already has a task assigned during this time slot.";
     }
 
     // 2. Calculate initial dynamic priority
-    final dynamicTask =
-        task.copyWith(dynamicPriorityScore: calculateDynamicPriority(task));
+    final dynamicTask = task.copyWith(
+      dynamicPriorityScore: calculateDynamicPriority(task),
+      googleEventId: task.googleEventId ?? "CAL-${task.taskId}",
+    );
 
     await _db
         .collection('tasks')
         .doc(dynamicTask.taskId)
         .set(dynamicTask.toJson());
+    await upsertCalendarEventForTask(dynamicTask);
     return "success";
   }
 
   // Update a task and re-calculate priority
-  Future<void> updateTask(TaskModel task) {
+  Future<void> updateTask(TaskModel task) async {
     final updatedTask = task.copyWith(
       dynamicPriorityScore: calculateDynamicPriority(task),
     );
-    return _db.collection('tasks').doc(updatedTask.taskId).update(updatedTask.toJson());
+    await _db
+        .collection('tasks')
+        .doc(updatedTask.taskId)
+        .update(updatedTask.toJson());
+    await upsertCalendarEventForTask(updatedTask);
   }
 
   // Delete a task
