@@ -2522,50 +2522,66 @@ class EmployeeAnalyticsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = Provider.of<AdminViewModel>(context);
     return Scaffold(
-      appBar: AppBar(title: Text("${employee.name}'s Analytics")),
+      appBar: AppBar(title: Text("${employee.name}'s KPI Report")),
       body: StreamBuilder<List<TaskModel>>(
         stream: vm.tasksStream,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData)
+        builder: (context, taskSnapshot) {
+          if (!taskSnapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           final stats = vm.calculateEmployeeStats(
             employee.userId,
-            snapshot.data!,
+            taskSnapshot.data!,
+          );
+          final workload = vm.calculateWorkloadPercentage(
+            employee,
+            taskSnapshot.data!,
           );
 
-          if (stats['total'] == 0) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.analytics_outlined, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
-                    "No tasks assigned to this member yet.",
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                ],
-              ),
-            );
-          }
+          return StreamBuilder<List<PerformanceMetric>>(
+            stream: vm.performanceMetricsStream,
+            builder: (context, metricSnapshot) {
+              final employeeMetrics =
+                  (metricSnapshot.data ?? [])
+                      .where((metric) => metric.userId == employee.userId)
+                      .toList()
+                    ..sort((a, b) => b.date.compareTo(a.date));
+              final kpi = _buildKpiSnapshot(
+                employee: employee,
+                stats: stats,
+                workload: workload,
+                metrics: employeeMetrics,
+              );
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildStatCards(stats),
-                const SizedBox(height: 30),
-                const Text(
-                  "Task Distribution",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _KpiHeader(employee: employee, kpi: kpi),
+                    const SizedBox(height: 16),
+                    _KpiScoreCard(kpi: kpi),
+                    const SizedBox(height: 16),
+                    _KpiMetricGrid(stats: stats, kpi: kpi),
+                    const SizedBox(height: 24),
+                    const Text(
+                      "Task Distribution",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPieChart(stats),
+                    const SizedBox(height: 24),
+                    _KpiSignalsPanel(kpi: kpi),
+                    const SizedBox(height: 24),
+                    _buildTaskList(stats['tasks']),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                _buildPieChart(stats),
-                const SizedBox(height: 30),
-                _buildTaskList(stats['tasks']),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
@@ -2573,43 +2589,404 @@ class EmployeeAnalyticsScreen extends StatelessWidget {
   }
 }
 
-Widget _buildStatCards(Map<String, dynamic> stats) {
-  return Row(
-    children: [
-      _statCard(
-        "Completion",
-        "${stats['completionRate'].toStringAsFixed(1)}%",
-        Colors.green,
-      ),
-      const SizedBox(width: 12),
-      _statCard("Total Tasks", "${stats['total']}", Colors.blue),
-    ],
+class _EmployeeKpiSnapshot {
+  const _EmployeeKpiSnapshot({
+    required this.score,
+    required this.rating,
+    required this.workload,
+    required this.appScreenMinutes,
+    required this.focusMinutes,
+    required this.taskSwitches,
+    required this.typedCharacters,
+    required this.correctionCount,
+    required this.keystrokesPerHour,
+    required this.typingActivityScore,
+    required this.focusRatio,
+    required this.correctionRate,
+    required this.recommendation,
+  });
+
+  final double score;
+  final String rating;
+  final double workload;
+  final int appScreenMinutes;
+  final int focusMinutes;
+  final int taskSwitches;
+  final int typedCharacters;
+  final int correctionCount;
+  final double keystrokesPerHour;
+  final double typingActivityScore;
+  final double focusRatio;
+  final double correctionRate;
+  final String recommendation;
+}
+
+_EmployeeKpiSnapshot _buildKpiSnapshot({
+  required UserModel employee,
+  required Map<String, dynamic> stats,
+  required double workload,
+  required List<PerformanceMetric> metrics,
+}) {
+  final appScreenMinutes = metrics.fold<int>(
+    0,
+    (total, metric) => total + metric.appScreenMinutes,
+  );
+  final focusMinutes = metrics.fold<int>(
+    0,
+    (total, metric) => total + metric.focusMinutes,
+  );
+  final taskSwitches = metrics.fold<int>(
+    0,
+    (total, metric) => total + metric.taskSwitches,
+  );
+  final typedCharacters = metrics.fold<int>(
+    0,
+    (total, metric) => total + metric.typedCharacters,
+  );
+  final correctionCount = metrics.fold<int>(
+    0,
+    (total, metric) => total + metric.correctionCount,
+  );
+  final avgKeystrokes = metrics.isEmpty
+      ? 0.0
+      : metrics
+                .map((metric) => metric.keystrokesPerHour)
+                .reduce((a, b) => a + b) /
+            metrics.length;
+  final avgTypingActivity = metrics.isEmpty
+      ? 0.0
+      : metrics
+                .map((metric) => metric.typingActivityScore)
+                .reduce((a, b) => a + b) /
+            metrics.length;
+  final completionRate = (stats['completionRate'] as num?)?.toDouble() ?? 0;
+  final focusRatio = appScreenMinutes <= 0
+      ? 0.0
+      : (focusMinutes / appScreenMinutes * 100).clamp(0, 100).toDouble();
+  final correctionRate = typedCharacters <= 0
+      ? 0.0
+      : (correctionCount / typedCharacters * 100).clamp(0, 100).toDouble();
+  final switchPenalty = (taskSwitches / 30 * 100).clamp(0, 100).toDouble();
+  final workloadBalance = workload <= 75
+      ? 100.0
+      : workload <= 90
+      ? 70.0
+      : 40.0;
+  final score =
+      (completionRate * 0.35 +
+              focusRatio * 0.20 +
+              avgTypingActivity * 0.15 +
+              (avgKeystrokes / 1800 * 100).clamp(0, 100) * 0.10 +
+              (100 - switchPenalty) * 0.10 +
+              workloadBalance * 0.10)
+          .clamp(0, 100)
+          .toDouble();
+  final rating = score >= 80
+      ? "Excellent"
+      : score >= 65
+      ? "Stable"
+      : score >= 45
+      ? "Needs support"
+      : "At risk";
+  final recommendation = rating == "At risk"
+      ? "Schedule a manager check-in, reduce context switching, and review blockers."
+      : rating == "Needs support"
+      ? "Improve focus time and task completion before adding more high-priority work."
+      : workload > 90
+      ? "Strong output, but workload is high. Rebalance new assignments."
+      : "Performance signals look healthy for normal task assignment.";
+
+  return _EmployeeKpiSnapshot(
+    score: score,
+    rating: rating,
+    workload: workload,
+    appScreenMinutes: appScreenMinutes,
+    focusMinutes: focusMinutes,
+    taskSwitches: taskSwitches,
+    typedCharacters: typedCharacters,
+    correctionCount: correctionCount,
+    keystrokesPerHour: avgKeystrokes,
+    typingActivityScore: avgTypingActivity,
+    focusRatio: focusRatio,
+    correctionRate: correctionRate,
+    recommendation: recommendation,
   );
 }
 
-Widget _statCard(String label, String value, Color color) {
-  return Expanded(
-    child: Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
+class _KpiHeader extends StatelessWidget {
+  const _KpiHeader({required this.employee, required this.kpi});
+
+  final UserModel employee;
+  final _EmployeeKpiSnapshot kpi;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              child: Text(
+                employee.name.isEmpty ? "?" : employee.name[0].toUpperCase(),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    employee.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text("${employee.role} - ${employee.email}"),
+                ],
+              ),
+            ),
+            Chip(
+              avatar: const Icon(Icons.admin_panel_settings_outlined, size: 16),
+              label: Text(kpi.rating),
+            ),
+          ],
+        ),
       ),
-      child: Column(
+    );
+  }
+}
+
+class _KpiScoreCard extends StatelessWidget {
+  const _KpiScoreCard({required this.kpi});
+
+  final _EmployeeKpiSnapshot kpi;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = kpi.score >= 80
+        ? Colors.green
+        : kpi.score >= 65
+        ? Colors.blue
+        : kpi.score >= 45
+        ? Colors.orange
+        : Colors.red;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    "KPI Score",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+                Text(
+                  kpi.score.toStringAsFixed(1),
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 30,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: kpi.score / 100,
+                minHeight: 10,
+                color: color,
+                backgroundColor: color.withOpacity(0.16),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(kpi.recommendation),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KpiMetricGrid extends StatelessWidget {
+  const _KpiMetricGrid({required this.stats, required this.kpi});
+
+  final Map<String, dynamic> stats;
+  final _EmployeeKpiSnapshot kpi;
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = [
+      _KpiMiniMetric(
+        "Completion",
+        "${((stats['completionRate'] as num?) ?? 0).toStringAsFixed(0)}%",
+        Icons.task_alt_outlined,
+        Colors.green,
+      ),
+      _KpiMiniMetric(
+        "Workload",
+        "${kpi.workload.toStringAsFixed(0)}%",
+        Icons.speed_outlined,
+        Colors.indigo,
+      ),
+      _KpiMiniMetric(
+        "Keys/hr",
+        kpi.keystrokesPerHour.toStringAsFixed(0),
+        Icons.keyboard_outlined,
+        Colors.teal,
+      ),
+      _KpiMiniMetric(
+        "Tab switches",
+        "${kpi.taskSwitches}",
+        Icons.tab_outlined,
+        Colors.orange,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 720 ? 4 : 2;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: cards.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 2.25,
+          ),
+          itemBuilder: (context, index) => cards[index],
+        );
+      },
+    );
+  }
+}
+
+class _KpiMiniMetric extends StatelessWidget {
+  const _KpiMiniMetric(this.label, this.value, this.icon, this.color);
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
+          Icon(icon, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
             ),
           ),
-          Text(label, style: const TextStyle(color: Colors.grey)),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _KpiSignalsPanel extends StatelessWidget {
+  const _KpiSignalsPanel({required this.kpi});
+
+  final _EmployeeKpiSnapshot kpi;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "System Monitoring Signals",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            _KpiSignalRow(
+              "App screen time",
+              "${kpi.appScreenMinutes} min",
+              Icons.monitor_outlined,
+            ),
+            _KpiSignalRow(
+              "Focus time",
+              "${kpi.focusMinutes} min (${kpi.focusRatio.toStringAsFixed(0)}%)",
+              Icons.center_focus_strong_outlined,
+            ),
+            _KpiSignalRow(
+              "Keyboard count",
+              "${kpi.typedCharacters} keys",
+              Icons.keyboard_alt_outlined,
+            ),
+            _KpiSignalRow(
+              "Corrections",
+              "${kpi.correctionCount} (${kpi.correctionRate.toStringAsFixed(1)}%)",
+              Icons.spellcheck_outlined,
+            ),
+            _KpiSignalRow(
+              "Tabs / task switches",
+              "${kpi.taskSwitches}",
+              Icons.tab_outlined,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KpiSignalRow extends StatelessWidget {
+  const _KpiSignalRow(this.label, this.value, this.icon);
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
+      title: Text(label),
+      trailing: Text(
+        value,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 }
 
 Widget _buildPieChart(Map<String, dynamic> stats) {

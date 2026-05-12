@@ -5,6 +5,7 @@ import '../../models/task_model.dart';
 import '../../models/user_model.dart';
 import '../../models/feedback_model.dart';
 import '../../services/ai_service.dart';
+import '../../services/activity_monitor_service.dart';
 import '../../services/calendar_service.dart';
 import '../../viewmodels/employee_viewmodel.dart';
 import '../login_screen.dart';
@@ -29,104 +30,145 @@ class _EmpHomescreenState extends State<EmpHomescreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ActivityMonitorService.instance.resetSession();
+      }
+    });
+  }
+
+  void _selectTab(int index) {
+    if (_selectedIndex != index) {
+      setState(() {
+        _selectedIndex = index;
+      });
+      ActivityMonitorService.instance.recordNavigationSwitch();
+    }
+  }
+
+  void _resetPerformanceSession() {
+    ActivityMonitorService.instance.resetSession();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<EmployeeViewModel>(context);
 
-    return StreamBuilder<UserModel>(
-      stream: viewModel.profileStream,
-      builder: (context, profileSnapshot) {
-        if (profileSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+    return AnimatedBuilder(
+      animation: ActivityMonitorService.instance,
+      builder: (context, _) {
+        final activityMonitor = ActivityMonitorService.instance;
+        return StreamBuilder<UserModel>(
+          stream: viewModel.profileStream,
+          builder: (context, profileSnapshot) {
+            if (profileSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-        if (profileSnapshot.hasError || !profileSnapshot.hasData) {
-          return Scaffold(
-            appBar: AppBar(title: const Text("Employee Portal")),
-            body: const Center(child: Text("Error loading profile")),
-          );
-        }
+            if (profileSnapshot.hasError || !profileSnapshot.hasData) {
+              return Scaffold(
+                appBar: AppBar(title: const Text("Employee Portal")),
+                body: const Center(child: Text("Error loading profile")),
+              );
+            }
 
-        final user = profileSnapshot.data!;
+            final user = profileSnapshot.data!;
 
-        return StreamBuilder<List<TaskModel>>(
-          stream: viewModel.myTasksStream,
-          builder: (context, taskSnapshot) {
-            final tasks = taskSnapshot.data ?? [];
-            final isLoadingTasks =
-                taskSnapshot.connectionState == ConnectionState.waiting;
+            return StreamBuilder<List<TaskModel>>(
+              stream: viewModel.myTasksStream,
+              builder: (context, taskSnapshot) {
+                final tasks = taskSnapshot.data ?? [];
+                final isLoadingTasks =
+                    taskSnapshot.connectionState == ConnectionState.waiting;
 
-            return Scaffold(
-              appBar: AppBar(
-                title: Text(_titles[_selectedIndex]),
-                leading: Builder(
-                  builder: (context) => IconButton(
-                    icon: const Icon(Icons.menu),
-                    onPressed: () => Scaffold.of(context).openDrawer(),
-                  ),
-                ),
-              ),
-              drawer: _EmployeeSidePanel(
-                user: user,
-                selectedIndex: _selectedIndex,
-                onSelect: (index) {
-                  setState(() => _selectedIndex = index);
-                  Navigator.pop(context);
-                },
-                onLogout: () => _logout(context, viewModel),
-              ),
-              body: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.02, 0),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
+                return Scaffold(
+                  appBar: AppBar(
+                    title: Text(_titles[_selectedIndex]),
+                    leading: Builder(
+                      builder: (context) => IconButton(
+                        icon: const Icon(Icons.menu),
+                        onPressed: () => Scaffold.of(context).openDrawer(),
+                      ),
                     ),
-                  );
-                },
-                child: KeyedSubtree(
-                  key: ValueKey(_selectedIndex),
-                  child: IndexedStack(
-                    index: _selectedIndex,
-                    children: [
-                      _EmployeeOverviewTab(
-                        user: user,
-                        tasks: tasks,
-                        isLoading: isLoadingTasks,
-                        onOpenTasks: () => setState(() => _selectedIndex = 1),
-                        onStatusChanged: viewModel.updateTaskStatus,
-                      ),
-                      _EmployeeTasksTab(
-                        tasks: tasks,
-                        isLoading: isLoadingTasks,
-                        onStatusChanged: viewModel.updateTaskStatus,
-                      ),
-                      _EmployeeScheduleTab(
-                        tasks: tasks,
-                        isLoading: isLoadingTasks,
-                        onStatusChanged: viewModel.updateTaskStatus,
-                      ),
-                      _EmployeeTeamSlotsTab(user: user, viewModel: viewModel),
-                      _EmployeeFeedbackTab(user: user, viewModel: viewModel),
-                      _EmployeeProfileTab(
-                        user: user,
-                        tasks: tasks,
-                        onSave: viewModel.updateProfile,
-                        onRecordPerformance:
-                            viewModel.recordPerformanceSnapshot,
-                      ),
-                    ],
                   ),
-                ),
-              ),
+                  drawer: _EmployeeSidePanel(
+                    user: user,
+                    selectedIndex: _selectedIndex,
+                    onSelect: (index) {
+                      _selectTab(index);
+                      Navigator.pop(context);
+                    },
+                    onLogout: () => _logout(context, viewModel),
+                  ),
+                  body: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.02, 0),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: KeyedSubtree(
+                      key: ValueKey(_selectedIndex),
+                      child: IndexedStack(
+                        index: _selectedIndex,
+                        children: [
+                          _EmployeeOverviewTab(
+                            user: user,
+                            tasks: tasks,
+                            isLoading: isLoadingTasks,
+                            onOpenTasks: () => _selectTab(1),
+                            onStatusChanged: viewModel.updateTaskStatus,
+                          ),
+                          _EmployeeTasksTab(
+                            tasks: tasks,
+                            isLoading: isLoadingTasks,
+                            onStatusChanged: viewModel.updateTaskStatus,
+                          ),
+                          _EmployeeScheduleTab(
+                            tasks: tasks,
+                            isLoading: isLoadingTasks,
+                            onStatusChanged: viewModel.updateTaskStatus,
+                          ),
+                          _EmployeeTeamSlotsTab(
+                            user: user,
+                            viewModel: viewModel,
+                          ),
+                          _EmployeeFeedbackTab(
+                            user: user,
+                            viewModel: viewModel,
+                          ),
+                          _EmployeeProfileTab(
+                            user: user,
+                            tasks: tasks,
+                            onSave: viewModel.updateProfile,
+                            onRecordPerformance:
+                                viewModel.recordPerformanceSnapshot,
+                            appScreenMinutes: activityMonitor.appScreenMinutes,
+                            focusMinutes: activityMonitor.focusMinutes,
+                            typedCharacters: activityMonitor.keystrokes,
+                            correctionCount: activityMonitor.corrections,
+                            taskSwitches: activityMonitor.navigationSwitches,
+                            onPerformanceRecorded: _resetPerformanceSession,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -1247,6 +1289,12 @@ class _EmployeeProfileTab extends StatelessWidget {
     required this.tasks,
     required this.onSave,
     required this.onRecordPerformance,
+    required this.appScreenMinutes,
+    required this.focusMinutes,
+    required this.typedCharacters,
+    required this.correctionCount,
+    required this.taskSwitches,
+    required this.onPerformanceRecorded,
   });
 
   final UserModel user;
@@ -1261,6 +1309,12 @@ class _EmployeeProfileTab extends StatelessWidget {
     required int taskSwitches,
   })
   onRecordPerformance;
+  final int appScreenMinutes;
+  final int focusMinutes;
+  final int typedCharacters;
+  final int correctionCount;
+  final int taskSwitches;
+  final VoidCallback onPerformanceRecorded;
 
   @override
   Widget build(BuildContext context) {
@@ -1338,6 +1392,29 @@ class _EmployeeProfileTab extends StatelessWidget {
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.62),
           ),
         ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Chip(
+              avatar: const Icon(Icons.keyboard_outlined, size: 16),
+              label: Text("$typedCharacters app keys"),
+            ),
+            Chip(
+              avatar: const Icon(Icons.spellcheck_outlined, size: 16),
+              label: Text("$correctionCount corrections"),
+            ),
+            Chip(
+              avatar: const Icon(Icons.tab_outlined, size: 16),
+              label: Text("$taskSwitches tab switches"),
+            ),
+            Chip(
+              avatar: const Icon(Icons.timer_outlined, size: 16),
+              label: Text("$appScreenMinutes min"),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -1402,11 +1479,21 @@ class _EmployeeProfileTab extends StatelessWidget {
   }
 
   void _showPerformanceDialog(BuildContext context) {
-    final screenController = TextEditingController(text: "60");
-    final focusController = TextEditingController(text: "45");
-    final typedController = TextEditingController(text: "0");
-    final correctionsController = TextEditingController(text: "0");
-    final switchesController = TextEditingController(text: "0");
+    final screenController = TextEditingController(
+      text: appScreenMinutes.toString(),
+    );
+    final focusController = TextEditingController(
+      text: focusMinutes.toString(),
+    );
+    final typedController = TextEditingController(
+      text: typedCharacters.toString(),
+    );
+    final correctionsController = TextEditingController(
+      text: correctionCount.toString(),
+    );
+    final switchesController = TextEditingController(
+      text: taskSwitches.toString(),
+    );
 
     showDialog(
       context: context,
@@ -1416,6 +1503,10 @@ class _EmployeeProfileTab extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Text(
+                "These values are captured for this app session only. You can adjust them before saving.",
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: screenController,
                 decoration: const InputDecoration(
@@ -1464,6 +1555,7 @@ class _EmployeeProfileTab extends StatelessWidget {
                 correctionCount: int.tryParse(correctionsController.text) ?? 0,
                 taskSwitches: int.tryParse(switchesController.text) ?? 0,
               );
+              onPerformanceRecorded();
               if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
